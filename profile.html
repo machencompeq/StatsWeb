@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人資料 — StatGrade AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    .profile-col {
+      max-width: 640px;
+      margin: 0 auto;
+      display: grid;
+      gap: var(--sp-4);
+    }
+    /* 身分卡 */
+    .idcard { display: flex; align-items: center; gap: var(--sp-5); }
+    .idcard__avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      background: var(--brand-50);
+      color: var(--brand-700);
+    }
+    .idcard__avatar--teacher { background: var(--review-tint); color: var(--review); }
+    .idcard__name-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+    .idcard__name { font-size: 18px; font-weight: 700; }
+    .idcard__email { font-size: 13px; color: var(--ink-3); margin-top: var(--sp-1); }
+    .idcard__id { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+    /* 基本資料定義列表 */
+    .info-dl { margin: 0; }
+    .info-dl > div {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      align-items: center;
+      min-height: 48px;
+      border-bottom: 1px solid var(--line);
+    }
+    .info-dl > div:last-child { border-bottom: 0; }
+    .info-dl dt { font-size: 13px; color: var(--ink-3); }
+    .info-dl dd { margin: 0; font-size: 15px; color: var(--ink); }
+    /* 統計卡三欄 */
+    .profile-stats.stat-row { grid-template-columns: repeat(3, 1fr); }
+    .account-note {
+      font-size: 12px;
+      color: var(--ink-3);
+      margin: var(--sp-3) 0 0;
+      text-align: center;
+    }
+    @media (max-width: 720px) {
+      .idcard { flex-direction: column; align-items: flex-start; }
+      .info-dl > div { grid-template-columns: 1fr; padding: var(--sp-2) 0; align-items: start; }
+      .profile-stats.stat-row { grid-template-columns: 1fr; }
+      .profile-stats .stat:not(:first-child) { border-left: 0; border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <nav class="nav__links" id="navLinks"></nav>
+      <div class="nav__auth" id="navAuth"></div>
+      <button class="nav__toggle" aria-label="選單" hidden>☰</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell">
+      <div class="page">
+        <div class="profile-col">
+          <div class="page-head" style="margin-bottom: 0;">
+            <div>
+              <h1>個人資料</h1>
+              <div class="rule-double"></div>
+            </div>
+          </div>
+
+          <!-- (1) 身分卡 -->
+          <section class="card idcard" aria-label="身分">
+            <div class="idcard__avatar" id="avatar"></div>
+            <div>
+              <div class="idcard__name-row">
+                <span class="idcard__name" id="pName"></span>
+                <span class="chip" id="pRoleChip"></span>
+              </div>
+              <div class="idcard__email" id="pEmail"></div>
+              <div class="idcard__id mono" id="pIdTop"></div>
+            </div>
+          </section>
+
+          <!-- (2) 基本資料卡 -->
+          <section class="card" aria-label="基本資料">
+            <div class="card__head"><h3>基本資料</h3></div>
+            <dl class="info-dl">
+              <div><dt>姓名</dt><dd id="dName"></dd></div>
+              <div><dt id="dIdLabel">學號</dt><dd class="mono" id="dId"></dd></div>
+              <div><dt>系所</dt><dd id="dDept"></dd></div>
+              <div><dt>Email</dt><dd id="dEmail"></dd></div>
+              <div><dt>註冊日期</dt><dd class="mono">2026-02-17</dd></div>
+            </dl>
+          </section>
+
+          <!-- (3) 角色感知統計卡 -->
+          <section class="card card--flush" aria-label="本學期活動">
+            <div class="card__head"><h3>本學期活動</h3></div>
+            <div class="stat-row profile-stats" id="statRow" style="padding: var(--sp-4) 0;"></div>
+          </section>
+
+          <!-- (4) 帳號卡 -->
+          <section class="card" aria-label="帳號">
+            <div class="card__head"><h3>帳號</h3></div>
+            <button class="btn btn--secondary btn--block" type="button" onclick="window.sgLogout()">登出</button>
+            <p class="account-note">Demo 帳號資料僅存於瀏覽器 localStorage</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境，所有資料皆為模擬</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/db.js"></script>
+  <script>
+    (function () {
+      var role = localStorage.getItem('authRole');
+      if (!role) { window.location.href = 'login.html'; return; }
+
+      /* 學生（陳苡瑄）的提交數與平均分由模擬資料庫即時計算 */
+      var myRecords = [];
+      try {
+        myRecords = SGDB.all().filter(function (r) { return r.sid === '113408515' && r.score !== null; });
+      } catch (e) { /* db.js 未載入時退回靜態值 */ }
+      var subCount = myRecords.length || 1;
+
+      var PROFILES = {
+        student: {
+          name: '陳苡瑄',
+          initial: '陳',
+          avatarClass: '',
+          chipClass: 'chip--role-student',
+          chipText: '學生',
+          idLabel: '學號',
+          id: '113408515',
+          dept: '財務金融學系（NCUFN）',
+          email: 'student@demo.statgrade.tw',
+          stats: [
+            { label: '已提交', value: String(subCount), unit: '份', meta: '含卡方獨立性檢定 FRQ' },
+            { label: '平均分數', value: '20', unit: '/ 20', meta: '共 ' + subCount + ' 份已批改' },
+            { label: '英文寫作', value: '18', unit: '/ 20', meta: 'CEFR B2 · 學術寫作回饋' }
+          ]
+        },
+        teacher: {
+          name: '朱珊瑩',
+          initial: '朱',
+          avatarClass: 'idcard__avatar--teacher',
+          chipClass: 'chip--role-teacher',
+          chipText: '教師',
+          idLabel: '教職編號',
+          id: 'T90211',
+          dept: '統計學系',
+          email: 'teacher@demo.statgrade.tw',
+          stats: [
+            { label: '批改覆核', value: '34', unit: '件', meta: '本學期已覆核' },
+            { label: '人工裁定', value: '6', unit: '件', meta: '低信心案件裁定' },
+            { label: '平均裁定時間', value: '2.1', unit: 'h', meta: '進佇列至裁定完成' }
+          ]
+        }
+      };
+      var p = PROFILES[role] || PROFILES.student;
+      document.getElementById('dDept').textContent = p.dept;
+
+      var avatar = document.getElementById('avatar');
+      avatar.textContent = p.initial;
+      if (p.avatarClass) avatar.classList.add(p.avatarClass);
+
+      document.getElementById('pName').textContent = p.name;
+      var chip = document.getElementById('pRoleChip');
+      chip.classList.add(p.chipClass);
+      chip.textContent = p.chipText;
+      document.getElementById('pEmail').textContent = p.email;
+      document.getElementById('pIdTop').textContent = p.id;
+
+      document.getElementById('dName').textContent = p.name;
+      document.getElementById('dIdLabel').textContent = p.idLabel;
+      document.getElementById('dId').textContent = p.id;
+      document.getElementById('dEmail').textContent = p.email;
+
+      document.getElementById('statRow').innerHTML = p.stats.map(function (s) {
+        return '<div class="stat">' +
+          '<div class="stat__label">' + s.label + '</div>' +
+          '<div class="stat__value">' + s.value + (s.unit ? ' <small>' + s.unit + '</small>' : '') + '</div>' +
+          '<div class="stat__meta">' + s.meta + '</div>' +
+        '</div>';
+      }).join('');
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StatGrade AI — 統計學申論題 AI 批改平台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    .hero {
+      display: grid;
+      grid-template-columns: 55fr 45fr;
+      gap: var(--sp-10);
+      align-items: center;
+      padding: var(--sp-12) 0 var(--sp-10);
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    .hero__sub { font-size: 15px; color: var(--ink-2); margin: var(--sp-5) 0 var(--sp-6); max-width: 460px; }
+    .hero__cta { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+    /* live 批改流卡片堆 */
+    .shot-deck { position: relative; }
+    .shot-deck::before, .shot-deck::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-1);
+      z-index: 0;
+    }
+    .shot-deck::before { transform: translate(10px, 12px) rotate(1.2deg); opacity: .55; }
+    .shot-deck::after  { transform: translate(5px, 6px) rotate(.5deg); opacity: .8; }
+    .shot {
+      position: relative;
+      z-index: 2;
+      box-shadow: var(--sh-3);
+      padding: var(--sp-5);
+      transition: transform .18s ease-out;
+      transform-style: preserve-3d;
+    }
+    .shot__id { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+    .shot__live {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: var(--ok-ink);
+    }
+    .shot__live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      animation: live-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes live-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(12,163,12,.35); }
+      50% { box-shadow: 0 0 0 5px rgba(12,163,12,0); }
+    }
+    .shot__ticker {
+      margin-top: var(--sp-3);
+      padding-top: var(--sp-2);
+      border-top: 1px dashed var(--line);
+      font-size: 11px;
+      color: var(--ink-3);
+      letter-spacing: .03em;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .shot__live-dot { animation: none; }
+      .exam-score { opacity: 1; transform: rotate(-8deg); }
+      .exam-score__ring ellipse { stroke-dashoffset: 0; }
+      .exam-stamp:not(.exam-stamp--serious) { opacity: 1; transform: rotate(-5deg); }
+    }
+    /* 考卷紅筆批改動畫 */
+    .exam-wrap { position: relative; margin-top: var(--sp-2); overflow: hidden; border-radius: var(--r-md); }
+    .exam-paper {
+      position: relative;
+      min-height: 302px;
+      background:
+        repeating-linear-gradient(transparent, transparent 27px, rgba(42, 120, 214, .12) 27px, rgba(42, 120, 214, .12) 28px),
+        #fffdf6;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      box-shadow: var(--sh-2);
+      padding: 12px 12px 14px 40px;
+      font-family: "Segoe Script", "Bradley Hand", "Comic Sans MS", cursive;
+      font-size: 12px;
+      line-height: 28px;
+      color: #263a56;
+    }
+    .exam-paper::before {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0; left: 28px;
+      width: 1px;
+      background: rgba(208, 59, 59, .25);
+    }
+    .exam-paper__head { font-size: 11px; color: #4a5a74; }
+    .exam-line { white-space: nowrap; overflow: hidden; }
+    /* 動態手寫：JS 建立的行先隱藏，逐行寫出 */
+    .write-line { width: 0; white-space: nowrap; overflow: hidden; }
+    .write-line.is-writing { animation: line-write .42s steps(22, end) forwards; }
+    @keyframes line-write { to { width: 100%; } }
+    .exam-mark { position: absolute; pointer-events: none; overflow: visible; }
+    .exam-mark path, .exam-mark ellipse, .exam-score__ring ellipse {
+      fill: none;
+      stroke: #d03b3b;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+    }
+    .exam-mark.draw path, .exam-mark.draw ellipse { animation: ink-draw .5s ease forwards; }
+    @keyframes ink-draw { to { stroke-dashoffset: 0; } }
+    .exam-note {
+      position: absolute;
+      font-family: "Segoe Script", "Bradley Hand", cursive;
+      font-size: 12px;
+      line-height: 1.3;
+      color: #d03b3b;
+      white-space: nowrap;
+      width: 0;
+      overflow: hidden;
+    }
+    .exam-note.write { animation: note-write .55s steps(12, end) forwards; }
+    @keyframes note-write { to { width: var(--wn, 140px); } }
+    .exam-score {
+      position: absolute;
+      top: 4px; right: 14px;
+      width: 74px; height: 64px;
+      opacity: 0;
+      transform: rotate(-8deg) scale(1.4);
+    }
+    .exam-score.show { animation: score-in .35s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+    @keyframes score-in { to { opacity: 1; transform: rotate(-8deg) scale(1); } }
+    .exam-score__ring { position: absolute; inset: 0; overflow: visible; }
+    .exam-score.show .exam-score__ring ellipse { animation: ink-draw .5s ease .12s forwards; }
+    .exam-score span {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: "Segoe Script", "Bradley Hand", cursive;
+      font-size: 28px; font-weight: 700;
+      color: #d03b3b;
+    }
+    .exam-stamp {
+      position: absolute;
+      right: 16px; bottom: 12px;
+      border: 2px solid var(--review);
+      color: var(--review);
+      background: rgba(255, 255, 255, .85);
+      font-family: var(--font-ui);
+      font-size: 13px; font-weight: 700;
+      letter-spacing: .1em;
+      padding: 3px 10px;
+      border-radius: var(--r-sm);
+      opacity: 0;
+      transform: rotate(-5deg) scale(1.6);
+    }
+    .exam-stamp.slam { animation: stamp-in .28s cubic-bezier(.4, 0, .6, 1) forwards; }
+    @keyframes stamp-in { to { opacity: 1; transform: rotate(-5deg) scale(1); } }
+    .exam-stamp--serious { border-color: var(--serious-ink); color: var(--serious-ink); letter-spacing: .02em; }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); margin-top: var(--sp-4); }
+    .features .card p { font-size: 13px; color: var(--ink-2); }
+    .features .card h3 { margin: var(--sp-3) 0 var(--sp-2); }
+    .section { margin-top: var(--sp-12); }
+    .section__head { margin-bottom: var(--sp-5); }
+    .section__head h2 { font-size: 18px; font-weight: 700; }
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; padding-top: var(--sp-8); }
+      .features { grid-template-columns: 1fr; }
+    }
+    /* 首頁動畫（class 皆由 JS 加入，無 JS 時頁面維持完整可見） */
+    .shot.fade-up { animation-delay: .15s; }
+    .reveal { opacity: 0; transform: translateY(12px); transition: opacity .5s ease, transform .5s ease; }
+    .reveal.is-in { opacity: 1; transform: none; }
+    .shot .meter__fill { transition: width .6s ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up { animation: none; }
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .shot .meter__fill { transition: none; }
+    }
+
+    /* ═══ 端到端流程動畫：信心分岔 ═══ */
+    .flow-card { padding: var(--sp-5) var(--sp-5) var(--sp-3); overflow: hidden; }
+    .flow-viewport { position: relative; }
+    .flow-stage { position: relative; width: 1040px; height: 360px; transform-origin: top left; }
+    .flow-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .flow-lines .rail { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+    .flow-lines .rail-active {
+      fill: none; stroke: var(--brand-500); stroke-width: 2;
+      stroke-dasharray: 7 7; opacity: 0; transition: opacity .3s;
+    }
+    .flow-lines .rail-active.is-on { opacity: 1; animation: rail-flow 1s linear infinite; }
+    @keyframes rail-flow { to { stroke-dashoffset: -14; } }
+
+    .flow-node {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      box-shadow: var(--sh-1);
+      padding: 10px 14px;
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .flow-node__name { font-size: 14px; font-weight: 700; line-height: 1.4; }
+    .flow-node__desc { font-size: 11px; color: var(--ink-3); line-height: 1.5; }
+    .flow-node.is-live { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(42,120,214,.14), var(--sh-2); }
+    .flow-node .pchip { padding: 1px 6px; font-size: 10px; }
+    .flow-node .meter { width: 100%; margin-top: 6px; }
+    .flow-node__conf { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); margin-top: 3px; min-height: 15px; }
+    .flow-node__model {
+      display: inline-block;
+      font-size: 10px;
+      color: var(--brand-700);
+      background: var(--brand-50);
+      border: 1px solid var(--brand-100);
+      border-radius: var(--r-xs);
+      padding: 0 5px;
+      margin-top: 5px;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+    .flow-node__dual {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--review);
+      background: var(--review-tint);
+      border-radius: var(--r-xs);
+      padding: 1px 5px;
+      vertical-align: 2px;
+    }
+
+    .flow-label {
+      position: absolute;
+      opacity: .45;
+      transition: opacity .3s, transform .3s;
+      font-family: var(--font-mono);
+    }
+    .flow-label.is-on { opacity: 1; transform: scale(1.06); }
+
+    /* 文件 token */
+    .flow-doc {
+      position: absolute;
+      left: 0; top: 0;
+      width: 40px; height: 50px;
+      margin: -25px 0 0 -20px;   /* 讓 offset-path 以中心對齊 */
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      border-radius: 4px;
+      box-shadow: var(--sh-2);
+      padding: 7px 6px;
+      opacity: 0;
+      offset-rotate: 0deg;
+      z-index: 5;
+    }
+    .flow-doc i { display: block; height: 3px; border-radius: 2px; background: var(--inset-deep); margin-bottom: 4px; }
+    .flow-doc i:nth-child(2) { width: 70%; }
+    .flow-doc__seal {
+      position: absolute; right: -7px; bottom: -7px;
+      width: 22px; height: 22px;
+      border: 1.5px solid var(--review);
+      border-radius: 50%;
+      background: var(--review-tint);
+      color: var(--review);
+      font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      transform: rotate(-12deg) scale(0);
+      transition: transform .25s cubic-bezier(.2, 1.6, .4, 1);
+    }
+    .flow-doc.is-sealed .flow-doc__seal:not(.flow-doc__seal--ai) { transform: rotate(-12deg) scale(1); }
+    .flow-doc__seal--ai {
+      right: auto; left: -7px;
+      border-color: var(--brand-600);
+      background: var(--brand-50);
+      color: var(--brand-700);
+      transform: rotate(10deg) scale(0);
+    }
+    .flow-doc.is-ai .flow-doc__seal--ai { transform: rotate(10deg) scale(1); }
+    .flow-doc__tag {
+      position: absolute; left: -8px; top: -9px;
+      background: var(--serious-tint);
+      border: 1px solid var(--serious-line);
+      color: var(--serious-ink);
+      font-size: 9px; font-weight: 700;
+      padding: 1px 5px;
+      border-radius: var(--r-xs);
+      transform: rotate(-6deg) scale(0);
+      transition: transform .25s cubic-bezier(.2, 1.6, .4, 1);
+      white-space: nowrap;
+    }
+    .flow-doc.is-tagged .flow-doc__tag { transform: rotate(-6deg) scale(1); }
+
+    /* 教授核章 */
+    .flow-stamp {
+      position: absolute;
+      border: 2px solid var(--review);
+      color: var(--review);
+      background: rgba(255,255,255,.9);
+      font-size: 14px; font-weight: 700;
+      letter-spacing: .1em;
+      padding: 4px 10px;
+      border-radius: var(--r-sm);
+      transform: rotate(-8deg) translateY(-30px);
+      opacity: .35;
+      transition: transform .18s cubic-bezier(.5, 0, .8, .4), opacity .18s;
+      z-index: 6;
+    }
+    .flow-stamp.is-slam { transform: rotate(-3deg) translateY(0); opacity: 1; }
+    .flow-stamp::after {
+      content: "";
+      position: absolute; inset: -5px;
+      border: 2px solid var(--review);
+      border-radius: var(--r-md);
+      opacity: 0;
+    }
+    .flow-stamp.is-slam::after { animation: stamp-ring .5s ease-out .1s; }
+    @keyframes stamp-ring {
+      0% { opacity: .7; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.45); }
+    }
+
+    /* 圓柱體資料庫 */
+    .flow-station { position: absolute; text-align: center; }
+    .flow-station__label { font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .flow-station__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+    .flow-db { position: relative; width: 76px; height: 86px; margin: 0 auto; }
+    .flow-db__top {
+      position: absolute; top: 0; left: 0; right: 0; height: 24px;
+      border-radius: 50%;
+      background: var(--brand-100);
+      border: 2px solid var(--brand-500);
+      z-index: 2;
+      transition: background .2s, box-shadow .2s;
+    }
+    .flow-db__body {
+      position: absolute; top: 12px; left: 0; right: 0; bottom: 0;
+      border: 2px solid var(--brand-500);
+      border-top: none;
+      border-radius: 0 0 38px 38px / 0 0 12px 12px;
+      background: linear-gradient(180deg, var(--brand-50), var(--brand-100));
+    }
+    .flow-db__body::before, .flow-db__body::after {
+      content: "";
+      position: absolute; left: 4px; right: 4px; height: 22px;
+      border-radius: 50%;
+      border-bottom: 1.5px solid var(--brand-200);
+    }
+    .flow-db__body::before { top: 26%; }
+    .flow-db__body::after { top: 56%; }
+    .flow-db.is-hit .flow-db__top {
+      background: var(--brand-200);
+      box-shadow: 0 0 0 7px rgba(42,120,214,.14);
+    }
+    .flow-db.is-hit { animation: db-bounce .45s ease; }
+    @keyframes db-bounce {
+      0%, 100% { transform: scaleY(1); }
+      40% { transform: scaleY(.94); }
+      70% { transform: scaleY(1.03); }
+    }
+
+    /* 人工複核收件匣 */
+    .flow-tray { position: relative; width: 88px; height: 66px; margin: 0 auto; }
+    .flow-tray__paper {
+      position: absolute; left: 50%; width: 48px; height: 11px;
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      border-radius: 2px;
+    }
+    .flow-tray__bin {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 36px;
+      border: 2px solid var(--ink-2);
+      border-radius: 5px 5px 8px 8px;
+      background: var(--surface);
+      z-index: 2;
+    }
+    .flow-tray__bin::after {
+      content: "";
+      position: absolute; left: 10px; right: 10px; top: 9px; height: 3px;
+      border-radius: 2px;
+      background: var(--inset-deep);
+    }
+    .flow-tray__badge {
+      position: absolute; top: 8px; right: -6px;
+      min-width: 22px; height: 22px;
+      border-radius: var(--r-pill);
+      background: var(--serious);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 5px;
+      z-index: 3;
+      transition: transform .2s cubic-bezier(.2, 1.6, .4, 1);
+    }
+    .flow-tray.is-hit { animation: tray-shake .4s ease; }
+    .flow-tray.is-hit .flow-tray__badge { transform: scale(1.25); }
+    @keyframes tray-shake {
+      0%, 100% { transform: translateX(0); }
+      30% { transform: translateX(-2px) rotate(-1deg); }
+      60% { transform: translateX(2px) rotate(1deg); }
+    }
+    .flow-notify {
+      position: absolute;
+      font-size: 11px;
+      color: var(--serious-ink);
+      background: var(--serious-tint);
+      border: 1px solid var(--serious-line);
+      border-radius: var(--r-pill);
+      padding: 2px 9px;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity .3s, transform .3s;
+      white-space: nowrap;
+    }
+    .flow-notify.is-on { opacity: 1; transform: translateY(0); }
+
+    .flow-caption {
+      text-align: center;
+      font-size: 12px;
+      color: var(--ink-3);
+      margin-top: var(--sp-2);
+      min-height: 20px;
+      transition: opacity .25s;
+    }
+    .flow-fallback { display: none; }
+
+    @media (max-width: 760px) {
+      .flow-card { display: none; }
+      .flow-fallback { display: block; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .flow-doc, .flow-stamp { display: none; }
+      .flow-label { opacity: 1; }
+      .flow-lines .rail-active { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <nav class="nav__links" id="navLinks"></nav>
+      <div class="nav__auth" id="navAuth"></div>
+      <button class="nav__toggle" aria-label="選單" hidden>☰</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell">
+      <!-- Hero -->
+      <section class="hero">
+        <div>
+          <span class="eyebrow eyebrow--brand">AI Grading × Anti-Hallucination</span>
+          <h1>統計申論題 AI 批改，<br>每一分都有依據</h1>
+          <div class="rule-double"></div>
+          <p class="hero__sub">
+            依據 SPDC 評分框架批改英文統計申論題：標準答案由 RAG 引用錨定、
+            數值由程式實際驗算、結果經教授視角二階段覆核 —— 即時回饋，且可信。
+          </p>
+          <div class="hero__cta">
+            <a class="btn btn--primary btn--lg" href="login.html">登入開始體驗</a>
+            <a class="btn btn--secondary btn--lg" href="intro.html">了解防幻覺機制</a>
+          </div>
+        </div>
+
+        <!-- Product shot：考卷一張張進來，紅筆手寫批改動畫 -->
+        <div class="shot-deck" id="shotDeck">
+          <div class="card shot" id="shotCard" aria-label="考卷批改動畫範例">
+            <div class="shot__id">
+              <span class="shot__live"><span class="shot__live-dot"></span>LIVE</span>
+              <span class="mono text-sm muted" id="shotId">sub_0142 · 王伯涵 · Q1 假設檢定</span>
+              <span class="chip chip--warn" id="shotChip" style="margin-left: auto;"><span class="chip__dot"></span>批改中</span>
+            </div>
+            <div class="exam-wrap">
+              <div class="exam-paper" id="examPaper">
+                <div class="exam-paper__head" id="examHead">B11208033 · 王伯涵 — Question 1</div>
+                <div id="examLines">
+                  <div class="exam-line">1. H₀: μ = 4 ,  H₁: μ &gt; 4  ( μ = mean waiting time )</div>
+                  <div class="exam-line">2. one-sample t-test ,  α = 0.05</div>
+                  <div class="exam-line">3. t = (4.6−4)/(1.5/√36) = 0.6/0.25 = 2.40</div>
+                  <div class="exam-line">    df = 35 ,  p ≈ 0.011</div>
+                  <div class="exam-line">4. p = 0.011 &lt; 0.05 → reject H₀</div>
+                </div>
+                <div class="exam-score" id="examScore">
+                  <svg class="exam-score__ring" viewBox="0 0 74 64"><ellipse pathLength="100" cx="37" cy="32" rx="32" ry="26"></ellipse></svg>
+                  <span id="examScoreN">14</span>
+                </div>
+                <div class="exam-stamp" id="examStamp">教授覆核</div>
+                <div class="exam-stamp exam-stamp--serious" id="examTag">仲裁 → 人工複核</div>
+              </div>
+            </div>
+            <div class="shot__ticker mono">grading engine · opus-4.8 ∥ sonnet-4.6 · red pen by AI</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 信任數據帶 -->
+      <section class="card card--flush" aria-label="平台數據">
+        <div class="stat-row" style="padding: var(--sp-4) 0;">
+          <div class="stat">
+            <div class="stat__label">本學期提交</div>
+            <div class="stat__value">142</div>
+            <div class="stat__meta"><span class="stat__delta-up">▲ 12</span> 較上週</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">平均 AI 信心度</div>
+            <div class="stat__value">0.91</div>
+            <div class="stat__meta">門檻 0.85，未達即轉人工</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">人工複核率</div>
+            <div class="stat__value">6.3<small>%</small></div>
+            <div class="stat__meta">低信心案件自動進佇列</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">平均批改時間</div>
+            <div class="stat__value">42<small>s</small></div>
+            <div class="stat__meta">含驗算與覆核兩階段</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 三管齊下 -->
+      <section class="section">
+        <div class="section__head">
+          <span class="eyebrow">三管齊下 · 防幻覺機制</span>
+          <h2>AI 批改的三個「不讓」</h2>
+        </div>
+        <div class="features">
+          <article class="card card--hover">
+            <span class="pchip">RAG引用</span>
+            <h3>不讓模型憑空批改</h3>
+            <p>標準答案與評分標準以 RAG 檢索、Citations 錨定 —— 每句評語都必須引用
+              Rubric 原文，杜絕「腦補一套標準解法」。</p>
+            <a class="text-sm" href="intro.html#s2">深入了解 →</a>
+          </article>
+          <article class="card card--hover">
+            <span class="pchip">CODE驗算</span>
+            <h3>不讓模型自己算數學</h3>
+            <p>檢定統計量、自由度、p 值全部由 Code Execution 以 scipy 實際執行計算，
+              絕不用文字接龍硬算來扣分。</p>
+            <a class="text-sm" href="intro.html#s2">深入了解 →</a>
+          </article>
+          <article class="card card--hover">
+            <span class="pchip">教授覆核</span>
+            <h3>不讓單一模型說了算</h3>
+            <p>批改結果交由第二階段「教授視角」覆核：檢查有沒有把對的判錯、錯的判對，
+              低信心案件自動轉人工複核佇列。</p>
+            <a class="text-sm" href="intro.html#s3">深入了解 →</a>
+          </article>
+        </div>
+      </section>
+
+      <!-- 端到端流程動畫：信心分岔 -->
+      <section class="section">
+        <div class="section__head">
+          <span class="eyebrow">端到端流程</span>
+          <h2>一份作答的旅程：信心度決定去向</h2>
+        </div>
+
+        <div class="card flow-card" aria-label="批改流程動畫：信心足夠自動核章落庫，不足轉人工複核">
+          <div class="flow-viewport" id="flowViewport">
+            <div class="flow-stage" id="flowStage">
+              <svg class="flow-lines" viewBox="0 0 1040 360" aria-hidden="true">
+                <!-- 底軌：上路（核章→資料庫）、下路（仲裁→佇列）、仲裁一致上升軌 -->
+                <path class="rail" d="M130,180 H620 Q654,180 654,146 V118 Q654,84 688,84 H886"></path>
+                <path class="rail" d="M620,180 Q654,180 654,214 V242 Q654,276 688,276 H886"></path>
+                <path class="rail" d="M834,276 Q858,276 858,252 V112 Q858,84 882,84"></path>
+                <!-- 動態軌 -->
+                <path class="rail-active" id="railA" d="M130,180 H620 Q654,180 654,146 V118 Q654,84 688,84 H886"></path>
+                <path class="rail-active" id="railB" d="M130,180 H620 Q654,180 654,214 V242 Q654,276 688,276 H886"></path>
+                <path class="rail-active" id="railC" d="M834,276 Q858,276 858,252 V112 Q858,84 882,84"></path>
+                <polygon points="190,174 202,180 190,186" fill="#c3c2b7"></polygon>
+                <polygon points="412,174 424,180 412,186" fill="#c3c2b7"></polygon>
+                <polygon points="878,78 890,84 878,90" fill="#c3c2b7"></polygon>
+                <polygon points="878,270 890,276 878,282" fill="#c3c2b7"></polygon>
+              </svg>
+
+              <!-- 節點 -->
+              <div class="flow-node" style="left: 0; top: 148px; width: 120px;">
+                <div class="flow-node__name">學生提交</div>
+                <div class="flow-node__desc">手寫作答 · OCR</div>
+              </div>
+              <div class="flow-node" id="fnAi" style="left: 202px; top: 130px; width: 158px;">
+                <div class="flow-node__name">AI 批改＋驗算</div>
+                <div style="display: flex; gap: 4px; margin-top: 5px;">
+                  <span class="pchip">RAG引用</span>
+                  <span class="pchip">CODE驗算</span>
+                </div>
+                <div class="flow-node__model mono">claude-opus-4-8</div>
+              </div>
+              <div class="flow-node" id="fnProf" style="left: 430px; top: 118px; width: 164px;">
+                <div class="flow-node__name">教授覆核 <span class="flow-node__dual">雙模型</span></div>
+                <div class="flow-node__model mono">opus-4.8 ∥ sonnet-4.6</div>
+                <span class="meter"><span class="meter__fill" id="fnFill" style="width: 0%;"></span><span class="meter__tick"></span></span>
+                <div class="flow-node__conf" id="fnConf">confidence —</div>
+              </div>
+
+              <!-- 雙模型仲裁節點（人工複核的替代選項） -->
+              <div class="flow-node" id="fnJudge" style="left: 706px; top: 242px; width: 124px;">
+                <div class="flow-node__name">仲裁重批</div>
+                <div class="flow-node__desc">第三份獨立評分</div>
+                <div class="flow-node__model mono">claude-sonnet-4-6</div>
+              </div>
+
+              <!-- 分岔標籤 -->
+              <span class="flow-label chip chip--ok" id="fnLabelA" style="left: 666px; top: 112px;"><span class="chip__dot"></span>信心 ≥ 0.85</span>
+              <span class="flow-label chip chip--serious" id="fnLabelB" style="left: 666px; top: 214px;"><span class="chip__dot"></span>信心 &lt; 0.85</span>
+              <span class="flow-label chip chip--ok" id="fnLabelC" style="left: 726px; top: 160px;"><span class="chip__dot"></span>兩模型一致</span>
+              <span class="flow-label chip chip--serious" id="fnLabelD" style="left: 700px; top: 312px;"><span class="chip__dot"></span>不一致 → 人工</span>
+
+              <!-- 教授核章 -->
+              <div class="flow-stamp" id="fnStamp" style="left: 716px; top: 36px;">教授覆核</div>
+
+              <!-- 圓柱體資料庫 -->
+              <div class="flow-station" style="left: 896px; top: 18px; width: 144px;">
+                <div class="flow-db" id="fnDb">
+                  <div class="flow-db__top"></div>
+                  <div class="flow-db__body"></div>
+                </div>
+                <div class="flow-station__label">結果資料庫</div>
+                <div class="flow-station__meta">已落庫 <span id="fnDbCount">142</span> 筆</div>
+              </div>
+
+              <!-- 人工複核收件匣 -->
+              <div class="flow-station" style="left: 896px; top: 224px; width: 144px;">
+                <span class="flow-notify" id="fnNotify" style="left: 50%; top: -26px; transform: translateX(-50%);">🔔 已通知教師 · 建立複核工單</span>
+                <div class="flow-tray" id="fnTray">
+                  <span class="flow-tray__paper" style="top: 14px; margin-left: -26px; transform: rotate(-2deg);"></span>
+                  <span class="flow-tray__paper" style="top: 8px;  margin-left: -22px; transform: rotate(2deg);"></span>
+                  <span class="flow-tray__paper" id="fnTrayNew" style="top: 2px; margin-left: -25px; transform: rotate(-1deg); opacity: 0;"></span>
+                  <div class="flow-tray__bin"></div>
+                  <span class="flow-tray__badge" id="fnQueueCount">5</span>
+                </div>
+                <div class="flow-station__label">人工複核佇列</div>
+                <div class="flow-station__meta">教師裁定 · 最終防線</div>
+              </div>
+
+              <!-- 文件 token -->
+              <div class="flow-doc" id="flowDoc">
+                <i></i><i></i><i></i>
+                <span class="flow-doc__tag">低信心</span>
+                <span class="flow-doc__seal">核</span>
+                <span class="flow-doc__seal flow-doc__seal--ai">B</span>
+              </div>
+            </div>
+          </div>
+          <div class="flow-caption" id="flowCaption">信心 ≥ 0.85 → 教授核章、自動落庫；信心 &lt; 0.85 → 轉人工複核佇列</div>
+        </div>
+
+        <!-- 行動版備援（<760px 顯示） -->
+        <div class="card flow-fallback">
+          <div class="pipeline">
+            <div class="pipeline__step">
+              <div class="pipeline__num">1</div>
+              <div>
+                <div class="pipeline__name">學生提交</div>
+                <div class="pipeline__desc">手寫作答，OCR 辨識為機器可讀格式</div>
+              </div>
+            </div>
+            <div class="pipeline__step">
+              <div class="pipeline__num">2</div>
+              <div>
+                <div class="pipeline__name">AI 批改＋驗算</div>
+                <div class="pipeline__desc">對照 Rubric 引用批改，scipy 驗算數值</div>
+              </div>
+            </div>
+            <div class="pipeline__step">
+              <div class="pipeline__num">3</div>
+              <div>
+                <div class="pipeline__name">教授覆核 · 信心分流</div>
+                <div class="pipeline__desc">信心 ≥ 0.85 → 自動核章落庫；不足 → 轉人工複核佇列</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境，所有資料皆為模擬</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      /* 1. 進場：hero 左欄 + 批改卡（卡片延遲 .15s，見 <style>） */
+      var heroLeft = document.querySelector('.hero > div:first-child');
+      var shot = document.querySelector('.shot');
+      if (heroLeft) heroLeft.classList.add('fade-up');
+      if (shot) shot.classList.add('fade-up');
+
+      /* 2. 捲動顯現（IntersectionObserver；初始隱藏由 JS 加 class） */
+      var revealEls = [];
+      document.querySelectorAll('section.card--flush, .section__head, .section > .card').forEach(function (el) {
+        revealEls.push(el);
+      });
+      document.querySelectorAll('.features > .card').forEach(function (el, i) {
+        el.style.transitionDelay = (i * 80) + 'ms'; /* 三卡 stagger */
+        revealEls.push(el);
+      });
+
+      /* 3. 數字 count-up：把 .stat__value 的數字文字節點包進 span（small 單位不動） */
+      document.querySelectorAll('.stat__value').forEach(function (v) {
+        var node = v.firstChild;
+        if (!node || node.nodeType !== 3) return;
+        var num = node.nodeValue.trim();
+        var span = document.createElement('span');
+        span.setAttribute('data-target', num);
+        span.textContent = num;
+        v.replaceChild(span, node);
+      });
+      function countUp(el) {
+        var raw = el.getAttribute('data-target');
+        var target = parseFloat(raw);
+        var dec = (raw.split('.')[1] || '').length;
+        var t0 = performance.now();
+        function tick(now) {
+          var p = Math.min((now - t0) / 900, 1);
+          var eased = 1 - Math.pow(1 - p, 3); /* easeOutCubic */
+          el.textContent = (target * eased).toFixed(dec);
+          if (p < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-in');
+            entry.target.querySelectorAll('.stat__value > [data-target]').forEach(countUp);
+            io.unobserve(entry.target);
+          });
+        }, { threshold: 0.2 });
+        revealEls.forEach(function (el) {
+          el.classList.add('reveal');
+          io.observe(el);
+        });
+      }
+
+      /* 4. 考卷批改動畫：一張張考卷進來 → 紅筆手寫批改 → 換下一張 */
+      var deck = document.getElementById('shotDeck');
+      var shotCard = document.getElementById('shotCard');
+      if (deck && shotCard) {
+        var S = {
+          id: document.getElementById('shotId'),
+          chip: document.getElementById('shotChip'),
+          paper: document.getElementById('examPaper'),
+          head: document.getElementById('examHead'),
+          lines: document.getElementById('examLines'),
+          score: document.getElementById('examScore'),
+          scoreN: document.getElementById('examScoreN'),
+          stamp: document.getElementById('examStamp'),
+          tag: document.getElementById('examTag')
+        };
+        var SVG = 'http://www.w3.org/2000/svg';
+        var LY = function (i) { return 40 + i * 28; }; /* 第 i 行文字的頂端 y */
+
+        var PAPERS = [
+          {
+            id: 'sub_0118 · 陳苡瑄 · 卡方獨立性檢定',
+            head: '113408515 · 陳苡瑄 — Chi-square Test for Independence',
+            end: { cls: 'chip--ok', text: '已覆核 · 20 / 20' },
+            lines: [
+              '1. H₀: independent ;  Ha: dependent ;  α = 0.05',
+              '2. χ² test ;  random ✓ ;  n=190 < 10% ✓ ;  E ≥ 5 ✓',
+              '3. E = 57.89, 52.11, 42.11, 37.89 ;  min 37.89',
+              '    χ² = Σ(O−E)²/E = 17.24 ,  df = 1',
+              '4. 17.24 > 3.841 → reject H₀ ,  sig. relationship'
+            ],
+            steps: [
+              { t: 'check', x: 3, y: 0 },
+              { t: 'check', x: 3, y: 1 },
+              { t: 'note', x: 262, y: 1.6, w: 96, text: '條件完整 ✓' },
+              { t: 'check', x: 3, y: 2 },
+              { t: 'check', x: 3, y: 3 },
+              { t: 'note', x: 224, y: 3, w: 128, text: '≈17.226 scipy ✓' },
+              { t: 'check', x: 3, y: 4 },
+              { t: 'score', v: '20' },
+              { t: 'stamp' }
+            ]
+          },
+          {
+            id: 'sub_0142 · 王伯涵 · Q1 假設檢定',
+            head: 'B11208033 · 王伯涵 — Question 1',
+            end: { cls: 'chip--ok', text: '已覆核 · 14 / 16' },
+            lines: [
+              '1. H₀: μ = 4 ,  H₁: μ > 4  ( μ: waiting time )',
+              '2. one-sample t-test ,  α = 0.05',
+              '3. t = (4.6−4)/(1.5/√36) = 0.6/0.25 = 2.40',
+              '    df = 35 ,  p ≈ 0.011',
+              '4. p = 0.011 < 0.05 → reject H₀'
+            ],
+            steps: [
+              { t: 'check', x: 3, y: 0 },
+              { t: 'squig', x: 58, y: 1, w: 112 },
+              { t: 'note', x: 258, y: 1, w: 108, text: '−1 未檢查條件' },
+              { t: 'check', x: 3, y: 2 },
+              { t: 'check', x: 3, y: 3 },
+              { t: 'check', x: 3, y: 4 },
+              { t: 'note', x: 64, y: 5, w: 150, text: '−1 結論未回扣脈絡' },
+              { t: 'score', v: '14' },
+              { t: 'stamp' }
+            ]
+          },
+          {
+            id: 'sub_0140 · 陳建宏 · Q2 兩樣本檢定',
+            head: 'B11208051 · 陳建宏 — Question 2',
+            end: { cls: 'chip--serious', text: '仲裁分歧 · 轉人工' },
+            lines: [
+              '1. H₀: μ₁ = μ₂ ,  H₁: μ₁ ≠ μ₂',
+              '2. two-sample t-test ( pooled variance )',
+              '3. sp² = 74.9 ,  t = 1.95 ,  df = 60',
+              '4. p ≈ 0.056 > 0.05 → fail to reject H₀'
+            ],
+            steps: [
+              { t: 'check', x: 232, y: 0 },
+              { t: 'circle', x: 148, y: 1, w: 130, h: 26 },
+              { t: 'note', x: 60, y: 2.15, w: 170, text: 'Rubric 未涵蓋此解法？' },
+              { t: 'circle', x: 106, y: 2, w: 74, h: 26 },
+              { t: 'note', x: 250, y: 3, w: 130, text: '仲裁：sonnet-4.6' },
+              { t: 'score', v: '?' },
+              { t: 'tag' }
+            ]
+          }
+        ];
+
+        function clearMarks() {
+          Array.prototype.slice.call(S.paper.querySelectorAll('.exam-mark, .exam-note')).forEach(function (el) {
+            el.parentNode.removeChild(el);
+          });
+          S.score.className = 'exam-score';
+          S.stamp.className = 'exam-stamp';
+          S.tag.className = 'exam-stamp exam-stamp--serious';
+        }
+        function mkSvg(x, y, w, h, d) {
+          var svg = document.createElementNS(SVG, 'svg');
+          svg.setAttribute('class', 'exam-mark');
+          svg.setAttribute('width', w);
+          svg.setAttribute('height', h);
+          svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+          svg.style.left = x + 'px';
+          svg.style.top = y + 'px';
+          var path = document.createElementNS(SVG, d.tag || 'path');
+          if (d.tag === 'ellipse') {
+            path.setAttribute('cx', w / 2); path.setAttribute('cy', h / 2);
+            path.setAttribute('rx', w / 2 - 3); path.setAttribute('ry', h / 2 - 3);
+          } else {
+            path.setAttribute('d', d.d);
+          }
+          path.setAttribute('pathLength', '100');
+          svg.appendChild(path);
+          S.paper.appendChild(svg);
+          requestAnimationFrame(function () { svg.classList.add('draw'); });
+        }
+        function squigD(w) {
+          var d = 'M2,5', x = 2;
+          while (x < w - 10) { d += ' q5,-7 10,0'; x += 10; }
+          return d;
+        }
+        function doStep(st) {
+          if (st.t === 'check') mkSvg(st.x, LY(st.y) + 4, 24, 20, { d: 'M3,11 L9,17 L21,4' });
+          if (st.t === 'squig') mkSvg(st.x, LY(st.y) + 22, st.w, 10, { d: squigD(st.w) });
+          if (st.t === 'circle') mkSvg(st.x, LY(st.y) - 1, st.w, st.h, { tag: 'ellipse' });
+          if (st.t === 'note') {
+            var n = document.createElement('div');
+            n.className = 'exam-note';
+            n.style.left = st.x + 'px';
+            n.style.top = (LY(st.y) + 3) + 'px';
+            n.style.setProperty('--wn', st.w + 'px');
+            n.textContent = st.text;
+            S.paper.appendChild(n);
+            requestAnimationFrame(function () { n.classList.add('write'); });
+          }
+          if (st.t === 'score') { S.scoreN.textContent = st.v; S.score.classList.add('show'); }
+          if (st.t === 'stamp') S.stamp.classList.add('slam');
+          if (st.t === 'tag') S.tag.classList.add('slam');
+        }
+        function setChip(cls, text) {
+          S.chip.className = 'chip ' + cls;
+          S.chip.innerHTML = '<span class="chip__dot"></span>';
+          S.chip.appendChild(document.createTextNode(text));
+          S.chip.style.marginLeft = 'auto';
+        }
+        function renderPaper(p) {
+          clearMarks();
+          S.id.textContent = p.id;
+          S.head.textContent = p.head;
+          S.head.className = 'exam-paper__head write-line';
+          S.lines.innerHTML = '';
+          p.lines.forEach(function (l) {
+            var div = document.createElement('div');
+            div.className = 'exam-line write-line';
+            div.textContent = l;
+            S.lines.appendChild(div);
+          });
+        }
+        var pi = 0;
+        function runPaper() {
+          var p = PAPERS[pi];
+          renderPaper(p);
+          setChip('chip--neutral', '書寫中…');
+          /* 考卷滑入 */
+          S.paper.animate([
+            { transform: 'translateX(112%) rotate(4deg)', opacity: 0 },
+            { transform: 'translateX(0) rotate(0deg)', opacity: 1 }
+          ], { duration: 480, easing: 'cubic-bezier(.2, .8, .3, 1)' });
+          /* 動態手寫：標頭與各行依序寫出 */
+          var writeEls = [S.head].concat(Array.prototype.slice.call(S.lines.children));
+          writeEls.forEach(function (el, i) {
+            setTimeout(function () { el.classList.add('is-writing'); }, 560 + i * 330);
+          });
+          /* 紅筆批改序列（寫完才開始） */
+          var markStart = 560 + writeEls.length * 330 + 400;
+          setTimeout(function () { setChip('chip--warn', '批改中'); }, markStart - 250);
+          p.steps.forEach(function (st, i) {
+            setTimeout(function () {
+              doStep(st);
+              if (i === p.steps.length - 1) setChip(p.end.cls, p.end.text);
+            }, markStart + i * 560);
+          });
+          /* 滑出 → 下一張 */
+          var total = markStart + p.steps.length * 560 + 1600;
+          setTimeout(function () {
+            S.paper.animate([
+              { transform: 'translateX(0) rotate(0deg)', opacity: 1 },
+              { transform: 'translateX(-118%) rotate(-5deg)', opacity: 0 }
+            ], { duration: 420, easing: 'ease-in' }).onfinish = function () {
+              pi = (pi + 1) % PAPERS.length;
+              runPaper();
+            };
+          }, total);
+        }
+        runPaper();
+
+        /* 3D 傾斜（僅支援 hover 的裝置） */
+        if (window.matchMedia('(hover: hover)').matches) {
+          deck.addEventListener('mousemove', function (e) {
+            var r = deck.getBoundingClientRect();
+            var x = (e.clientX - r.left) / r.width - .5;
+            var y = (e.clientY - r.top) / r.height - .5;
+            shotCard.style.transform = 'perspective(900px) rotateY(' + (x * 5).toFixed(2) + 'deg) rotateX(' + (-y * 4).toFixed(2) + 'deg)';
+          });
+          deck.addEventListener('mouseleave', function () {
+            shotCard.style.transform = '';
+          });
+        }
+      }
+    })();
+  </script>
+  <script>
+    /* ═══ 端到端流程動畫：信心分岔 × 三種結局（核章落庫 / 仲裁一致落庫 / 轉人工） ═══ */
+    (function () {
+      var stage = document.getElementById('flowStage');
+      if (!stage) return;
+
+      /* 響應式等比縮放（1040×360 舞台） */
+      var viewport = document.getElementById('flowViewport');
+      function fit() {
+        var w = viewport.clientWidth;
+        var s = Math.min(1, w / 1040);
+        stage.style.transform = 'scale(' + s + ')';
+        viewport.style.height = Math.round(360 * s) + 'px';
+      }
+      fit();
+      window.addEventListener('resize', fit);
+
+      var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var supportsOffset = typeof CSS !== 'undefined' && CSS.supports &&
+        CSS.supports('offset-path', 'path("M0 0 L10 10")');
+
+      var $ = function (id) { return document.getElementById(id); };
+      var doc = $('flowDoc'), caption = $('flowCaption');
+      var rails = { A: $('railA'), B: $('railB'), C: $('railC') };
+      var labels = { A: $('fnLabelA'), B: $('fnLabelB'), C: $('fnLabelC'), D: $('fnLabelD') };
+      var nodeAi = $('fnAi'), nodeProf = $('fnProf'), nodeJudge = $('fnJudge');
+      var fill = $('fnFill'), conf = $('fnConf');
+      var stamp = $('fnStamp'), db = $('fnDb'), dbCount = $('fnDbCount');
+      var tray = $('fnTray'), trayNew = $('fnTrayNew'), queueCount = $('fnQueueCount'), notify = $('fnNotify');
+
+      fill.style.transition = 'width .8s ease';
+
+      if (reduced || !supportsOffset) {
+        Object.keys(labels).forEach(function (k) { labels[k].classList.add('is-on'); });
+        return; /* 靜態圖表模式 */
+      }
+
+      /* 路徑：A 直達核章落庫；B 下路（仲裁 → 佇列）；C 下路 → 仲裁 → 上升落庫 */
+      var PATH_A = 'path("M130,180 H620 Q654,180 654,146 V118 Q654,84 688,84 H886")';
+      var PATH_B = 'path("M130,180 H620 Q654,180 654,214 V242 Q654,276 688,276 H886")';
+      var PATH_C = 'path("M130,180 H620 Q654,180 654,214 V242 Q654,276 688,276 H834 Q858,276 858,252 V112 Q858,84 882,84 H886")';
+      var nDb = 142, nQueue = 5;
+      var timers = [];
+      function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+      function setCap(t) { caption.textContent = t; }
+      function pop(el) {
+        el.animate([
+          { transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }
+        ], { duration: 380, easing: 'ease-out' });
+      }
+
+      function resetCycle(path, rail) {
+        timers.forEach(clearTimeout); timers = [];
+        doc.classList.remove('is-sealed', 'is-tagged', 'is-ai');
+        doc.getAnimations().forEach(function (a) { a.cancel(); });
+        doc.style.offsetPath = path;
+        doc.style.offsetDistance = '0%';
+        doc.style.opacity = '1';
+        [nodeAi, nodeProf, nodeJudge].forEach(function (n) { n.classList.remove('is-live'); });
+        fill.style.width = '0%';
+        fill.parentElement.classList.remove('meter--low');
+        conf.textContent = 'confidence —';
+        conf.style.color = '';
+        stamp.classList.remove('is-slam');
+        Object.keys(rails).forEach(function (k) { rails[k].classList.remove('is-on'); });
+        Object.keys(labels).forEach(function (k) { labels[k].classList.remove('is-on'); });
+        notify.classList.remove('is-on');
+        if (rail) rail.forEach(function (k) { rails[k].classList.add('is-on'); });
+      }
+
+      /* 共用：抵達 AI / 教授覆核 節點的事件 */
+      function stageEvents(D, f, confVal, low, capAi) {
+        setCap('學生提交作答 → 進入批改管線');
+        at(D * f.ai, function () {
+          nodeAi.classList.add('is-live');
+          setCap(capAi);
+        });
+        at(D * f.aiOut, function () { nodeAi.classList.remove('is-live'); });
+        at(D * f.prof, function () {
+          nodeProf.classList.add('is-live');
+          setCap('雙模型教授覆核中（opus-4.8 ∥ sonnet-4.6）— 檢查誤判與計算一致性…');
+          if (low) fill.parentElement.classList.add('meter--low');
+          fill.style.width = Math.round(confVal * 100) + '%';
+          at(700, function () {
+            conf.textContent = 'confidence = ' + confVal.toFixed(2);
+            conf.style.color = low ? 'var(--serious-ink)' : 'var(--ok-ink)';
+          });
+        });
+      }
+
+      function dropIntoDb(capText) {
+        doc.animate([
+          { transform: 'translateY(0) scale(1)', opacity: 1 },
+          { transform: 'translateY(26px) scale(.35)', opacity: 0 }
+        ], { duration: 420, easing: 'cubic-bezier(.5, 0, .8, .4)', fill: 'forwards' });
+        at(300, function () {
+          db.classList.add('is-hit');
+          nDb += 1;
+          dbCount.textContent = nDb;
+          pop(dbCount.parentElement);
+          setCap(capText);
+          at(600, function () { db.classList.remove('is-hit'); });
+        });
+      }
+
+      /* 結局 A：信心足夠 → 教授核章 → 落入圓柱體資料庫 */
+      function runA() {
+        resetCycle(PATH_A, ['A']);
+        var D = 7200;
+        doc.animate([
+          { offsetDistance: '0%',    offset: 0 },
+          { offsetDistance: '18%',   offset: .11 },
+          { offsetDistance: '18%',   offset: .22 },
+          { offsetDistance: '46%',   offset: .33 },
+          { offsetDistance: '46%',   offset: .56 },
+          { offsetDistance: '83.5%', offset: .72 },
+          { offsetDistance: '83.5%', offset: .82 },
+          { offsetDistance: '100%',  offset: .95 },
+          { offsetDistance: '100%',  offset: 1 }
+        ], { duration: D, easing: 'linear', fill: 'forwards' });
+
+        stageEvents(D, { ai: .11, aiOut: .22, prof: .33 }, 0.93, false,
+          'AI 批改中 — Rubric 引用錨定 · scipy 驗算數值');
+        at(D * .56, function () {
+          nodeProf.classList.remove('is-live');
+          labels.A.classList.add('is-on');
+          setCap('信心 0.93 ≥ 門檻 0.85 —— 走自動核章路徑');
+        });
+        at(D * .72, function () {
+          stamp.classList.add('is-slam');
+          at(160, function () { doc.classList.add('is-sealed'); });
+          setCap('教授核章 ✓');
+        });
+        at(D * .84, function () { stamp.classList.remove('is-slam'); });
+        at(D * .95, function () { dropIntoDb('已落庫 — 批改結果即時同步教師端'); });
+        at(D + 1700, runC);
+      }
+
+      /* 結局 B（仲裁一致）：信心不足 → 雙模型仲裁 → 兩模型一致 → 直接落庫（免人工） */
+      function runC() {
+        resetCycle(PATH_C, ['B', 'C']);
+        var D = 8400;
+        doc.animate([
+          { offsetDistance: '0%',    offset: 0 },
+          { offsetDistance: '15.2%', offset: .10 },
+          { offsetDistance: '15.2%', offset: .20 },
+          { offsetDistance: '38.4%', offset: .30 },
+          { offsetDistance: '38.4%', offset: .52 },
+          { offsetDistance: '71%',   offset: .63 },
+          { offsetDistance: '71%',   offset: .78 },
+          { offsetDistance: '100%',  offset: .94 },
+          { offsetDistance: '100%',  offset: 1 }
+        ], { duration: D, easing: 'linear', fill: 'forwards' });
+
+        stageEvents(D, { ai: .10, aiOut: .20, prof: .30 }, 0.66, true,
+          'AI 批改中 — 偵測到替代解法，比對 Rubric 覆蓋範圍…');
+        at(D * .46, function () { doc.classList.add('is-tagged'); });
+        at(D * .52, function () {
+          nodeProf.classList.remove('is-live');
+          labels.B.classList.add('is-on');
+          setCap('信心 0.66 < 門檻 0.85 —— 先交雙模型仲裁（人工的替代選項）');
+        });
+        at(D * .63, function () {
+          nodeJudge.classList.add('is-live');
+          setCap('仲裁重批中（claude-sonnet-4-6）— 不參考先前批改的獨立評分…');
+        });
+        at(D * .78, function () {
+          nodeJudge.classList.remove('is-live');
+          labels.C.classList.add('is-on');
+          doc.classList.add('is-ai');
+          doc.classList.remove('is-tagged');
+          setCap('兩模型評分一致（14 / 16 vs 14 / 16）—— 視同通過，免人工');
+        });
+        at(D * .94, function () { dropIntoDb('仲裁一致 → 已落庫，全程零人工'); });
+        at(D + 1700, runB);
+      }
+
+      /* 結局 C（仲裁不一致）：雙模型仲裁分歧 → 滑入人工複核收件匣 */
+      function runB() {
+        resetCycle(PATH_B, ['B']);
+        var D = 8000;
+        doc.animate([
+          { offsetDistance: '0%',    offset: 0 },
+          { offsetDistance: '18%',   offset: .10 },
+          { offsetDistance: '18%',   offset: .20 },
+          { offsetDistance: '46%',   offset: .30 },
+          { offsetDistance: '46%',   offset: .52 },
+          { offsetDistance: '85.6%', offset: .64 },
+          { offsetDistance: '85.6%', offset: .80 },
+          { offsetDistance: '100%',  offset: .94 },
+          { offsetDistance: '100%',  offset: 1 }
+        ], { duration: D, easing: 'linear', fill: 'forwards' });
+
+        stageEvents(D, { ai: .10, aiOut: .20, prof: .30 }, 0.58, true,
+          'AI 批改中 — 手寫符號辨識存疑（p̂ vs p）…');
+        at(D * .46, function () { doc.classList.add('is-tagged'); });
+        at(D * .52, function () {
+          nodeProf.classList.remove('is-live');
+          labels.B.classList.add('is-on');
+          setCap('信心 0.58 < 門檻 0.85 —— 先交雙模型仲裁');
+        });
+        at(D * .64, function () {
+          nodeJudge.classList.add('is-live');
+          setCap('仲裁重批中（claude-sonnet-4-6）…');
+        });
+        at(D * .80, function () {
+          nodeJudge.classList.remove('is-live');
+          labels.D.classList.add('is-on');
+          setCap('兩模型評分分歧（6 / 16 vs 9 / 16）—— 轉人工複核');
+        });
+        at(D * .94, function () {
+          doc.animate([
+            { transform: 'translateY(0) scaleY(1)', opacity: 1 },
+            { transform: 'translateY(22px) scaleY(.5)', opacity: 0 }
+          ], { duration: 420, easing: 'cubic-bezier(.5, 0, .8, .4)', fill: 'forwards' });
+          at(300, function () {
+            tray.classList.add('is-hit');
+            trayNew.style.opacity = '1';
+            nQueue += 1;
+            queueCount.textContent = nQueue;
+            notify.classList.add('is-on');
+            setCap('已建立複核工單 — 由朱珊瑩教授最終裁定');
+            at(700, function () { tray.classList.remove('is-hit'); });
+          });
+        });
+        at(D + 2100, function () {
+          trayNew.style.opacity = '0';
+          runA();
+        });
+      }
+
+      /* 進入視窗開始播放（IO 為主，保險機制兜底） */
+      var started = false;
+      function start() {
+        if (started) return;
+        started = true;
+        runA();
+      }
+      if (/[?&]autoflow=1/.test(location.search)) { start(); return; }
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) { if (e.isIntersecting) { start(); io.disconnect(); } });
+        }, { threshold: 0.3 });
+        io.observe(viewport);
+      }
+      /* 兜底：載入 1.2 秒後若舞台已在視窗內仍未啟動，直接開始 */
+      setTimeout(function () {
+        var r = viewport.getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) start();
+      }, 1200);
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

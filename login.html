@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登入 — StatGrade AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    .login-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12vh var(--sp-4) var(--sp-12);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      box-shadow: var(--sh-2);
+      padding: var(--sp-8);
+    }
+    .login-card__head { text-align: center; margin-bottom: var(--sp-6); }
+    .login-card__head .nav__mark {
+      width: 32px; height: 32px;
+      font-size: 18px;
+      margin-bottom: var(--sp-3);
+    }
+    .login-card__title { font-size: 18px; font-weight: 700; }
+    .login-card__sub { font-size: 13px; color: var(--ink-3); margin-top: var(--sp-1); }
+    .login-error { margin-bottom: var(--sp-4); }
+    .demo-card {
+      width: 100%;
+      max-width: 400px;
+      margin-top: var(--sp-4);
+    }
+    .demo-card__title { font-size: 13px; font-weight: 700; margin-bottom: var(--sp-3); }
+    .demo-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-3);
+      padding: var(--sp-2) 0;
+    }
+    .demo-row + .demo-row { border-top: 1px solid var(--line); }
+    .demo-row__role { font-size: 13px; color: var(--ink-2); }
+    .demo-row__cred { font-size: 13px; }
+    .login-note {
+      font-size: 12px;
+      color: var(--ink-3);
+      margin-top: var(--sp-5);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <a class="btn btn--ghost btn--sm" href="index.html">返回首頁</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="login-wrap">
+      <div class="card login-card">
+        <div class="login-card__head">
+          <span class="nav__mark">Σ</span>
+          <div class="login-card__title">登入 StatGrade AI</div>
+          <p class="login-card__sub">輸入帳號密碼，進入學生作答區或教師儀表板</p>
+        </div>
+
+        <div class="callout callout--crit login-error" id="loginError" hidden>
+          帳號或密碼錯誤，請重新輸入。
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="loginUser">帳號</label>
+            <input type="text" id="loginUser" name="username" autocomplete="username" placeholder="student 或 teacher">
+          </div>
+          <div class="field">
+            <label for="loginPass">密碼</label>
+            <input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="請輸入密碼">
+          </div>
+          <button type="submit" class="btn btn--primary btn--lg btn--block">登入</button>
+        </form>
+      </div>
+
+      <div class="card card--soft demo-card">
+        <div class="demo-card__title">Demo 帳號</div>
+        <div class="demo-row">
+          <span class="demo-row__role">學生</span>
+          <span class="demo-row__cred mono">student / student</span>
+          <button type="button" class="btn btn--ghost btn--sm" data-fill="student">一鍵填入</button>
+        </div>
+        <div class="demo-row">
+          <span class="demo-row__role">教師</span>
+          <span class="demo-row__cred mono">teacher / teacher</span>
+          <button type="button" class="btn btn--ghost btn--sm" data-fill="teacher">一鍵填入</button>
+        </div>
+      </div>
+
+      <p class="login-note">本站為前端展示環境，不傳送任何資料</p>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境，所有資料皆為模擬</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var HOME = { student: 'student.html', teacher: 'teacher.html' };
+      var ACCOUNTS = {
+        student: { pass: 'student', role: 'student', name: '陳苡瑄' },
+        teacher: { pass: 'teacher', role: 'teacher', name: '朱珊瑩' }
+      };
+
+      // 已登入 → 直接導向對應角色頁
+      var existingRole = localStorage.getItem('authRole');
+      if (existingRole && HOME[existingRole]) {
+        window.location.replace(HOME[existingRole]);
+        return;
+      }
+
+      var form = document.getElementById('loginForm');
+      var userInput = document.getElementById('loginUser');
+      var passInput = document.getElementById('loginPass');
+      var errorBox = document.getElementById('loginError');
+
+      // Demo 帳號一鍵填入
+      var fillBtns = document.querySelectorAll('[data-fill]');
+      for (var i = 0; i < fillBtns.length; i++) {
+        fillBtns[i].addEventListener('click', function () {
+          var acct = this.getAttribute('data-fill');
+          userInput.value = acct;
+          passInput.value = ACCOUNTS[acct].pass;
+          errorBox.hidden = true;
+          userInput.focus();
+        });
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var u = userInput.value.trim();
+        var p = passInput.value;
+        var acct = ACCOUNTS[u];
+        if (!acct || acct.pass !== p) {
+          errorBox.hidden = false;
+          return;
+        }
+        localStorage.setItem('authRole', acct.role);
+        localStorage.setItem('authUser', u);
+        localStorage.setItem('authName', acct.name);
+
+        var redirect = new URLSearchParams(location.search).get('redirect');
+        var dest = HOME[acct.role];
+        if (redirect === acct.role && HOME[redirect]) {
+          dest = HOME[redirect];
+        }
+        window.location.href = dest;
+      });
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作答區 — StatGrade AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    if (localStorage.getItem('authRole') !== 'student') {
+      location.replace('login.html?redirect=student');
+    }
+  </script>
+  <style>
+    /* ── 版面 ── */
+    .work-grid {
+      display: grid;
+      grid-template-columns: 58fr 42fr;
+      gap: var(--sp-6);
+      align-items: start;
+    }
+    .work-col > * + * { margin-top: var(--sp-4); }
+    .result-aside {
+      position: sticky;
+      top: calc(var(--nav-h) + 20px);
+      max-height: calc(100vh - var(--nav-h) - 40px);
+      overflow-y: auto;
+    }
+    .result-aside > * + * { margin-top: var(--sp-4); }
+    .page-head__meta .field { margin: 0; flex: 1 1 auto; min-width: 0; max-width: 340px; }
+    .page-head__meta .field select { width: 100%; }
+    .page-head__meta .chip { flex: none; font-family: var(--font-mono); }
+
+    /* ── 題目：列聯表 ── */
+    .exam-sheet table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: var(--sp-3);
+      font-size: 14px;
+    }
+    .exam-sheet th, .exam-sheet td {
+      border: 1px solid var(--line-strong);
+      padding: 5px 10px;
+      text-align: center;
+    }
+    .exam-sheet th { background: var(--inset); font-weight: 700; }
+
+    /* ── 手寫檢視：真實掃描 / 模擬手寫 ── */
+    .scan-tabs {
+      display: flex;
+      gap: var(--sp-1);
+      border-bottom: 1px solid var(--line);
+      margin-bottom: var(--sp-3);
+    }
+    .scan-tab {
+      border: none;
+      background: none;
+      padding: 6px 12px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .scan-tab:hover { color: var(--ink); }
+    .scan-tab.is-active { color: var(--ink); font-weight: 700; border-bottom-color: var(--brand-600); }
+
+    .upload-zone {
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--r-lg);
+      padding: var(--sp-8) var(--sp-5);
+      text-align: center;
+      color: var(--ink-3);
+      font-size: 13px;
+    }
+    .upload-zone__icon { font-size: 26px; margin-bottom: var(--sp-2); }
+    .upload-zone__btns { display: flex; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); flex-wrap: wrap; }
+
+    .scan-photo {
+      position: relative;
+      height: 640px;
+      overflow: hidden;
+      background: #eceae3;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      box-shadow: var(--sh-2);
+    }
+    .scan-photo img {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 620px;
+      transform: translate(-50%, -50%) rotate(90deg);
+      box-shadow: var(--sh-3);
+    }
+    .scan-photo a { position: absolute; inset: 0; cursor: zoom-in; }
+    /* 真實掃描動畫：光束掃過影像 */
+    .scan-beam {
+      position: absolute;
+      left: 0; right: 0;
+      height: 90px;
+      top: -100px;
+      background: linear-gradient(180deg,
+        rgba(42, 120, 214, 0) 0%,
+        rgba(42, 120, 214, .16) 42%,
+        rgba(122, 190, 255, .55) 50%,
+        rgba(42, 120, 214, .16) 58%,
+        rgba(42, 120, 214, 0) 100%);
+      box-shadow: 0 0 28px rgba(42, 120, 214, .3);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .scan-photo.is-scanning .scan-beam { opacity: 1; animation: scan-sweep 1.6s linear 2; }
+    @keyframes scan-sweep { from { top: -100px; } to { top: 100%; } }
+    @media (prefers-reduced-motion: reduce) {
+      .scan-photo.is-scanning .scan-beam { animation: none; opacity: 0; }
+    }
+
+    .scan-paper {
+      position: relative;
+      max-height: 480px;
+      overflow-y: auto;
+      background:
+        repeating-linear-gradient(transparent, transparent 27px, rgba(42, 120, 214, .13) 27px, rgba(42, 120, 214, .13) 28px),
+        #fffdf6;
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      box-shadow: var(--sh-2);
+      padding: 20px 22px 16px 48px;
+      font-family: "Segoe Script", "Bradley Hand", "Comic Sans MS", cursive;
+      font-size: 14px;
+      line-height: 28px;
+      color: #263a56;
+    }
+    .scan-paper::before {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0; left: 34px;
+      width: 1px;
+      background: rgba(208, 59, 59, .28);
+    }
+    .scan-paper__head { color: #4a5a74; font-size: 13px; }
+    .scan-paper .sec { color: #17335e; font-weight: 700; }
+    /* 疑問圈選（AI 重寫稿上） */
+    .amb-hl { padding: 0 3px; border-radius: 3px; background: var(--warn-tint); }
+    .amb-hl.is-ok { background: var(--ok-tint); }
+    .doubt { position: absolute; pointer-events: none; overflow: visible; }
+    .doubt ellipse {
+      fill: none;
+      stroke: var(--serious);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+    }
+    .doubt.draw ellipse { animation: ink-draw .55s ease forwards; }
+    .doubt.is-resolved ellipse { stroke: var(--ok); }
+    @keyframes ink-draw { to { stroke-dashoffset: 0; } }
+    .write-line { overflow: hidden; white-space: nowrap; width: 0; min-height: 28px; }
+    .write-line.is-writing { animation: write-on .5s steps(26, end) forwards; }
+    @keyframes write-on { from { width: 0; } to { width: 100%; } }
+    @media (prefers-reduced-motion: reduce) {
+      .write-line { width: 100% !important; animation: none !important; }
+    }
+    .scan-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      margin-top: var(--sp-3);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-3);
+      flex-wrap: wrap;
+    }
+    .scan-meta .btn { margin-left: auto; }
+
+    /* ── OCR 步驟與辨識結果 ── */
+    .ocr-steps { list-style: none; padding: 0; margin: 0; }
+    .ocr-steps li {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: 5px 0;
+      font-size: 13px;
+      color: var(--ink-3);
+    }
+    .ocr-steps__mark { width: 18px; text-align: center; font-weight: 700; flex: none; }
+    .ocr-steps li.is-active { color: var(--ink); }
+    .ocr-steps li.is-active .ocr-steps__mark { color: var(--brand-600); animation: pchip-pulse 1s infinite; border-radius: 50%; }
+    .ocr-steps li.is-done { color: var(--ink-2); }
+    .ocr-steps li.is-done .ocr-steps__mark { color: var(--ok-ink); }
+
+    .ocr-seg {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--brand-200);
+      border-radius: var(--r-md);
+      padding: 10px 14px;
+      margin-bottom: var(--sp-2);
+    }
+    .ocr-seg__head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 2px; }
+    .ocr-seg__name { font-size: 13px; font-weight: 700; }
+    .ocr-seg__conf { margin-left: auto; font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+    .ocr-seg__text { font-size: 14px; line-height: 1.9; color: var(--ink); }
+    .amb {
+      background: var(--warn-tint);
+      border: 1px dashed var(--warn-line);
+      color: var(--warn-ink);
+      padding: 0 5px;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .amb.is-resolved {
+      background: var(--ok-tint);
+      border: 1px solid var(--ok-line);
+      color: var(--ok-ink);
+    }
+    .ocr-raw { font-size: 13px; line-height: 1.8; color: var(--ink-2); white-space: pre-wrap; }
+
+    /* ── 確認卡 ── */
+    .choice-row { padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+    .choice-row:last-of-type { border-bottom: none; }
+    .choice-row__label { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .choice-row__hint { font-size: 12px; color: var(--ink-3); margin: 2px 0 var(--sp-2); }
+    .choice-row__opts { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .choice {
+      min-width: 68px;
+      height: 34px;
+      padding: 0 var(--sp-4);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-pill);
+      background: var(--surface);
+      font-family: var(--font-exam);
+      font-size: 15px;
+      color: var(--ink);
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .choice:hover { border-color: var(--brand-500); }
+    .choice.is-picked {
+      background: var(--brand-50);
+      border-color: var(--brand-500);
+      box-shadow: inset 0 0 0 1px var(--brand-500);
+      color: var(--brand-700);
+      font-weight: 700;
+    }
+    .choice--zh { font-family: var(--font-ui); font-size: 14px; }
+    .key-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+    .key-grid--three { grid-template-columns: repeat(3, 1fr); }
+    .key-grid .field { margin-bottom: 0; }
+    .key-grid .field input { font-family: var(--font-mono); }
+    .sym-strip { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--sp-2); }
+    .sym-strip .sym-key { min-width: 38px; min-height: 30px; font-size: 15px; }
+    .flash { background: var(--brand-50) !important; }
+
+    /* ── 提交列 ── */
+    .submit-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--sp-3);
+      background: rgba(255, 255, 255, .92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--line);
+      border-radius: var(--r-lg);
+      box-shadow: var(--sh-2);
+      padding: var(--sp-3) var(--sp-4);
+    }
+    .submit-bar__state { font-size: 13px; color: var(--ink-3); }
+    .submit-bar__state.is-ready { color: var(--ok-ink); font-weight: 500; }
+
+    /* ── 右欄：批改流程與思考過程 ── */
+    .flow-chips { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+    .flow-status { font-size: 13px; color: var(--ink-2); min-height: 22px; margin-top: var(--sp-2); }
+    .db-commit {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      margin-top: var(--sp-3);
+      padding: 10px var(--sp-3);
+      background: var(--ok-tint);
+      border: 1px solid var(--ok-line);
+      border-radius: var(--r-md);
+      animation: fade-up .35s ease both;
+    }
+    .db-commit__icon { font-size: 18px; flex: none; }
+    .db-commit__text {
+      flex: 1;
+      min-width: 0;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-2);
+      white-space: nowrap;
+      overflow-x: auto;
+    }
+    .db-commit .chip { flex: none; }
+    .think {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: var(--sp-2) var(--sp-3);
+      max-height: 280px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 2;
+    }
+    .think__line { display: flex; gap: var(--sp-2); animation: fade-up .25s ease both; }
+    .think__tag { flex: none; min-width: 82px; font-weight: 700; color: var(--brand-600); }
+    .think__tag--code { color: var(--ok-ink); }
+    .think__tag--warn { color: var(--warn-ink); }
+    .think__tag--review { color: var(--review); }
+    .think__tag--dim { color: var(--ink-2); }
+    .think__text { color: var(--ink-2); }
+
+    /* ── 結果 ── */
+    .result-score { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+    .result-score__num { font-family: var(--font-mono); font-size: 40px; font-weight: 700; line-height: 1.2; }
+    .result-score__num small { font-size: 18px; color: var(--ink-3); font-weight: 500; }
+    .result-score__chips { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-end; }
+    .score-bar--big { width: 180px; height: 8px; }
+    .scipy-block {
+      background: var(--inset);
+      border-radius: var(--r-md);
+      border-left: 3px solid var(--ok);
+      padding: var(--sp-2) var(--sp-3);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.9;
+      color: var(--ink-2);
+      white-space: pre;
+      overflow-x: auto;
+      margin: var(--sp-2) 0;
+    }
+    .verified-row { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); }
+    .item-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: var(--sp-2) 0; }
+    .item-table th, .item-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+    .item-table th { background: var(--inset); color: var(--ink-2); font-weight: 600; }
+    .item-table td:first-child, .item-table td:nth-child(2) { font-family: var(--font-mono); white-space: nowrap; }
+    .report-links { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-top: var(--sp-4); }
+
+    @media (max-width: 960px) {
+      .work-grid { grid-template-columns: 1fr; }
+      .result-aside { position: static; max-height: none; overflow: visible; }
+      .key-grid--three { grid-template-columns: 1fr; }
+      .scan-photo { height: 480px; }
+      .scan-photo img { width: 460px; }
+    }
+    @media (max-width: 720px) {
+      .page-head__meta { width: 100%; }
+      .page-head__meta .field { max-width: none; }
+      .key-grid { grid-template-columns: 1fr; }
+      .report-links { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell nav__shell--wide">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <nav class="nav__links" id="navLinks"></nav>
+      <div class="nav__auth" id="navAuth"></div>
+      <button class="nav__toggle" aria-label="選單" hidden>☰</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell shell--wide page">
+      <div class="page-head">
+        <div>
+          <h1>作答區</h1>
+          <div class="rule-double"></div>
+        </div>
+        <div class="page-head__meta">
+          <div class="field">
+            <select id="qSelect" aria-label="選擇題目">
+              <option value="ncu2" selected>National Central University 2 · 卡方獨立性檢定</option>
+              <option value="q1">題目一 · Customer Waiting Time（示意）</option>
+              <option value="q2">題目二 · Study Method Comparison（示意）</option>
+              <option value="q3">題目三 · Defect Rate（示意）</option>
+            </select>
+          </div>
+          <span class="chip chip--neutral">113408515</span>
+        </div>
+      </div>
+
+      <div class="work-grid">
+        <!-- ══════════ 左欄：作答流 ══════════ -->
+        <div class="work-col">
+          <!-- 題目卡 -->
+          <section class="card" aria-label="題目">
+            <div class="card__head">
+              <span style="display:inline-flex; gap:8px; align-items:center;">
+                <span class="chip chip--info" id="qChip">FRQ</span>
+                <span class="chip chip--neutral" id="qUnit">卡方獨立性檢定</span>
+              </span>
+              <span class="mono text-sm muted" id="qMeta">20 pts · Q-ID chi_002</span>
+            </div>
+            <div class="exam-sheet" id="examSheet"></div>
+          </section>
+
+          <!-- 非真實案例提示 -->
+          <div class="callout" id="demoHint" hidden>
+            展示版以<strong>陳苡瑄同學的真實作答</strong>（National Central University 2 · 卡方獨立性檢定）
+            示範完整批改流程。切回第一個題目即可體驗真實手寫掃描 → OCR → AI 批改 → 回饋報告。
+          </div>
+
+          <!-- 手寫作答卡 -->
+          <section class="card" aria-label="手寫作答上傳" id="uploadCard">
+            <div class="card__head">
+              <h3>手寫作答上傳</h3>
+              <span class="text-sm muted">支援手寫板 / 掃描 / 拍照</span>
+            </div>
+
+            <div class="upload-zone" id="uploadZone">
+              <div class="upload-zone__icon">✍️</div>
+              <p>在紙上完成作答後，將影像拖曳至此。<br>
+                過程不需打字 —— 系統以 OCR 辨識文字與數學符號，僅在關鍵處請你確認。</p>
+              <div class="upload-zone__btns">
+                <button class="btn btn--secondary btn--sm" type="button" id="btnFile">選擇檔案</button>
+                <button class="btn btn--primary btn--sm" type="button" id="btnSample">載入真實手寫作答（陳苡瑄 · 第 1 次）</button>
+              </div>
+            </div>
+
+            <div id="scanView" hidden>
+              <div class="scan-photo" id="scanPhoto">
+                <a href="student_hand_write/陳苡瑄手寫.jpeg" target="_blank" rel="noopener" title="點擊開啟原圖">
+                  <img src="student_hand_write/陳苡瑄手寫.jpeg" alt="陳苡瑄手寫作答掃描">
+                </a>
+                <span class="scan-beam"></span>
+              </div>
+              <div class="scan-meta">
+                <span>陳苡瑄手寫.jpeg</span>
+                <span>4032 × 3024 · 第 1 次作答</span>
+                <button class="btn btn--ghost btn--sm" type="button" id="btnReupload">重新上傳</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- AI 辨識重寫：系統把辨識內容親手再寫一次，圈出疑問處 -->
+          <section class="card" aria-label="AI 辨識重寫" id="rewriteCard" hidden>
+            <div class="card__head">
+              <h3>AI 辨識重寫</h3>
+              <span class="chip chip--warn" id="rewriteChip"><span class="chip__dot"></span>重寫中…</span>
+            </div>
+            <p class="text-sm muted" style="margin-bottom: var(--sp-3);">
+              系統依 OCR 辨識結果逐行重寫作答內容——<b>橘圈</b>為辨識疑問處，請於下方「僅需確認」區核取。
+            </p>
+            <div class="scan-paper" id="simPaper" aria-label="AI 依辨識內容重寫">
+              <div class="scan-paper__head write-line" id="simHead">113408515 · 陳苡瑄 — Sheet 3 · Chi-square Test for Independence</div>
+            </div>
+          </section>
+
+          <!-- OCR 卡 -->
+          <section class="card" aria-label="OCR 影像辨識" id="ocrCard" hidden>
+            <div class="card__head">
+              <h3>OCR 影像辨識</h3>
+              <span class="chip chip--warn" id="ocrChip"><span class="chip__dot"></span>辨識中…</span>
+            </div>
+
+            <ul class="ocr-steps" id="ocrSteps">
+              <li><span class="ocr-steps__mark">●</span>影像前處理 — 去噪、旋轉校正（偵測到 90° 橫置）、二值化</li>
+              <li><span class="ocr-steps__mark">●</span>版面分析 — 依 SPDC 標題分區切割</li>
+              <li><span class="ocr-steps__mark">●</span>符號辨識 — 手寫數學式（χ²、Σ、下標）轉機器可讀格式</li>
+              <li><span class="ocr-steps__mark">●</span>信心標記 — 低信心符號標註待確認</li>
+            </ul>
+
+            <div id="ocrResult" hidden>
+              <details class="acc" style="margin-top: var(--sp-2);">
+                <summary class="text-sm">電腦看到的（機器可讀保存格式）</summary>
+                <div class="acc__body mono" style="line-height: 2; overflow-x: auto;">
+                  H_0: \text{independent},\quad H_a: \text{dependent},\quad \alpha = 0.05<br>
+                  \chi^2 = \sum \dfrac{(O_i - E_i)^2}{E_i} = 17.24,\quad df = (r-1)(c-1) = 1<br>
+                  \chi^2_{0.05,\,1} = 3.84146,\quad 17.24 &gt; 3.841 \Rightarrow \text{reject } H_0
+                </div>
+              </details>
+              <details class="acc">
+                <summary class="text-sm">檢視原始 OCR 全文輸出（113408515_NCUFN_陳苡瑄_第1次）</summary>
+                <div class="acc__body">
+                  <div class="ocr-raw" id="ocrRaw"></div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <!-- 確認卡 -->
+          <section class="card" aria-label="關鍵確認" id="confirmCard" hidden>
+            <div class="card__head">
+              <h3>僅需確認 3 處</h3>
+              <span class="text-sm muted">其餘過程已由 OCR 轉為機器可讀格式保存</span>
+            </div>
+
+            <div class="choice-row">
+              <div class="choice-row__label">
+                ① 最小期望次數
+                <span class="chip chip--warn"><span class="chip__dot"></span>OCR 低信心</span>
+              </div>
+              <div class="choice-row__hint">手寫「9」與「4」筆跡相近，請確認 (80 × 90) / 190 的計算結果</div>
+              <div class="choice-row__opts" data-group="amb1">
+                <button class="choice" type="button" data-value="37.89">37.89</button>
+                <button class="choice" type="button" data-value="37.84">37.84</button>
+              </div>
+            </div>
+
+            <div class="choice-row">
+              <div class="choice-row__label">
+                ② χ² 檢定統計量
+                <span class="chip chip--warn"><span class="chip__dot"></span>OCR 低信心</span>
+              </div>
+              <div class="choice-row__hint">手寫「4」與「9」筆跡相近，請確認 Σ(O−E)²/E 的加總結果</div>
+              <div class="choice-row__opts" data-group="amb2">
+                <button class="choice" type="button" data-value="17.24">χ² = 17.24</button>
+                <button class="choice" type="button" data-value="17.29">χ² = 17.29</button>
+              </div>
+            </div>
+
+            <div class="choice-row">
+              <div class="choice-row__label">③ 最終結論（重要結論需明確勾選）</div>
+              <div class="choice-row__hint">依 χ² 與臨界值 3.841 比較的判定</div>
+              <div class="choice-row__opts" data-group="conclusion">
+                <button class="choice choice--zh" type="button" data-value="reject">拒絕 H₀</button>
+                <button class="choice choice--zh" type="button" data-value="fail">不拒絕 H₀</button>
+              </div>
+            </div>
+
+            <div style="margin-top: var(--sp-4);">
+              <div class="text-sm" style="font-weight: 600; margin-bottom: var(--sp-2);">
+                關鍵答案（結構化保存，精準批改）
+                <span class="text-sm muted" style="font-weight: 400;">— 已由 OCR 預填，可修改</span>
+              </div>
+              <div class="sym-strip" aria-label="符號快捷鍵（插入 H₀ / Ha 欄位）">
+                <button class="sym-key" type="button" data-sym="χ²">χ²</button>
+                <button class="sym-key" type="button" data-sym="α">α</button>
+                <button class="sym-key" type="button" data-sym="≠">≠</button>
+                <button class="sym-key" type="button" data-sym="≥">≥</button>
+                <button class="sym-key" type="button" data-sym="≤">≤</button>
+                <button class="sym-key" type="button" data-sym="Σ">Σ</button>
+                <button class="sym-key" type="button" data-sym="μ">μ</button>
+                <button class="sym-key" type="button" data-sym="→">→</button>
+              </div>
+              <div class="key-grid">
+                <div class="field">
+                  <label for="keyH0">H₀（虛無假設）</label>
+                  <input id="keyH0" type="text" value="segment 與 channel 獨立（independent）">
+                </div>
+                <div class="field">
+                  <label for="keyH1">Ha（對立假設）</label>
+                  <input id="keyH1" type="text" value="segment 與 channel 相依（dependent）">
+                </div>
+              </div>
+              <div class="key-grid key-grid--three" style="margin-top: var(--sp-3);">
+                <div class="field">
+                  <label for="keyStat">χ² 統計量</label>
+                  <input id="keyStat" type="text" inputmode="decimal" value="" placeholder="確認上方 ② 後帶入">
+                </div>
+                <div class="field">
+                  <label for="keyDf">自由度</label>
+                  <input id="keyDf" type="text" inputmode="numeric" value="1">
+                </div>
+                <div class="field">
+                  <label for="keyP">臨界值（α = 0.05）</label>
+                  <input id="keyP" type="text" inputmode="decimal" value="3.84146">
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 提交列 -->
+          <div class="submit-bar" id="submitBar">
+            <span class="submit-bar__state" id="submitState">請先上傳手寫作答</span>
+            <button class="btn btn--primary btn--lg" type="button" id="btnSubmit" disabled>提交批改</button>
+          </div>
+        </div>
+
+        <!-- ══════════ 右欄：批改結果 ══════════ -->
+        <aside class="result-aside" id="resultAside" aria-label="批改結果">
+          <div id="emptyBox">
+            <div class="empty">
+              提交後將在此顯示 AI 批改與教授覆核結果
+              <div class="flow-chips" style="justify-content: center; margin-top: var(--sp-3);">
+                <span class="pchip">RAG引用</span>
+                <span class="pchip">CODE驗算</span>
+                <span class="pchip">SCHEMA</span>
+                <span class="pchip">教授覆核</span>
+              </div>
+            </div>
+          </div>
+
+          <section class="card" id="flowCard" hidden aria-label="批改流程">
+            <div class="card__head">
+              <h3>批改流程</h3>
+              <span class="mono text-sm muted" id="flowSub"></span>
+            </div>
+            <div class="flow-chips" id="flowChips">
+              <span class="pchip">RAG引用</span>
+              <span class="pchip">CODE驗算</span>
+              <span class="pchip">SCHEMA</span>
+              <span class="pchip">教授覆核</span>
+            </div>
+            <div class="flow-status" id="flowStatus"></div>
+            <div class="db-commit" id="dbCommit" hidden>
+              <span class="db-commit__icon">🗄️</span>
+              <span class="db-commit__text" id="dbCommitText"></span>
+              <span class="chip chip--ok" id="dbCommitChip" hidden><span class="chip__dot"></span>已落庫</span>
+            </div>
+          </section>
+
+          <section class="card" id="thinkCard" hidden aria-label="AI 思考過程">
+            <div class="card__head">
+              <h3>AI 批改思考過程</h3>
+              <span class="chip chip--info" id="thinkChip"><span class="chip__dot"></span>adaptive thinking</span>
+            </div>
+            <div class="think" id="thinkLog" aria-live="polite"></div>
+          </section>
+
+          <div id="resultBody" hidden>
+            <section class="card result-score" aria-label="總分">
+              <div>
+                <div class="result-score__num">20 <small>/ 20</small></div>
+                <span class="score-bar score-bar--big"><span class="score-bar__fill" style="width: 100%;"></span></span>
+                <div class="text-sm muted mono" id="resultMeta" style="margin-top: 6px;"></div>
+              </div>
+              <div class="result-score__chips">
+                <span class="chip chip--ok"><span class="chip__dot"></span>教授覆核通過</span>
+                <span class="chip chip--info"><span class="chip__dot"></span>English 18 / 20 · CEFR B2</span>
+              </div>
+            </section>
+
+            <section class="card" style="margin-top: var(--sp-4);" aria-label="SPDC 各維度得分">
+              <ul class="step-check">
+                <li>
+                  <span class="step-check__mark step-check__mark--ok">✓</span>
+                  <span class="step-check__name">State</span>
+                  <span class="step-check__score">5 / 5</span>
+                  <span class="step-check__note">目標、H₀ / Ha、α、脈絡逐項全對</span>
+                </li>
+                <li>
+                  <span class="step-check__mark step-check__mark--ok">✓</span>
+                  <span class="step-check__name">Plan</span>
+                  <span class="step-check__score">5 / 5</span>
+                  <span class="step-check__note">檢定選擇正確，三條件驗證完整（min E = 37.89）</span>
+                </li>
+                <li>
+                  <span class="step-check__mark step-check__mark--ok">✓</span>
+                  <span class="step-check__name">Do</span>
+                  <span class="step-check__score">5 / 5</span>
+                  <span class="step-check__note">χ² = 17.24（≈ 17.226）、df = 1、臨界值 3.841 皆正確</span>
+                </li>
+                <li>
+                  <span class="step-check__mark step-check__mark--ok">✓</span>
+                  <span class="step-check__name">Conclude</span>
+                  <span class="step-check__score">5 / 5</span>
+                  <span class="step-check__note">比較、判定、開頭語與脈絡收尾完整</span>
+                </li>
+              </ul>
+            </section>
+
+            <div style="margin-top: var(--sp-4);">
+              <details class="acc">
+                <summary>State · 5 / 5 ✓（逐項評分）</summary>
+                <div class="acc__body">
+                  <div class="table-scroll">
+                    <table class="item-table">
+                      <tr><th>Item</th><th>Score</th><th>Correction and Explanation</th></tr>
+                      <tr><td>State-A</td><td>1</td><td>Correctly stated the goal: test relationship between customer segment and advertising channel.</td></tr>
+                      <tr><td>State-B</td><td>1</td><td>Null hypothesis correctly stated: independence.</td></tr>
+                      <tr><td>State-C</td><td>1</td><td>Alternative hypothesis correctly stated: dependence.</td></tr>
+                      <tr><td>State-D</td><td>1</td><td>Significance level correctly identified as α = 0.05.</td></tr>
+                      <tr><td>State-E</td><td>1</td><td>Context provided (customer segment and advertising channel).</td></tr>
+                    </table>
+                  </div>
+                  <div class="citation">
+                    <div class="citation__head"><span class="citation__tag">RUBRIC State-A</span></div>
+                    <div class="citation__quote citation__quote--exam">"Correct identification of the goal (relationship between customer segment and advertising channel)."</div>
+                    <div class="citation__source">── Scoring Rubric · Chi-square Test for Independence（1142 Final Exam）</div>
+                  </div>
+                  <div class="verified-row"><span class="verified">✓ Rubric 引用</span></div>
+                </div>
+              </details>
+              <details class="acc">
+                <summary>Plan · 5 / 5 ✓（逐項評分）</summary>
+                <div class="acc__body">
+                  <div class="table-scroll">
+                    <table class="item-table">
+                      <tr><th>Item</th><th>Score</th><th>Correction and Explanation</th></tr>
+                      <tr><td>Plan-A</td><td>1</td><td>Correct test chosen: Chi-square test for independence.</td></tr>
+                      <tr><td>Plan-B</td><td>1</td><td>Randomness addressed: random sample of 190 customers.</td></tr>
+                      <tr><td>Plan-C</td><td>1</td><td>Independence (10% rule) noted: n = 190 likely &lt; 10%.</td></tr>
+                      <tr><td>Plan-D</td><td>1</td><td>Minimum expected count calculated (37.89).</td></tr>
+                      <tr><td>Plan-E</td><td>1</td><td>Large counts condition stated: min expected ≥ 5.</td></tr>
+                    </table>
+                  </div>
+                  <div class="citation">
+                    <div class="citation__head"><span class="citation__tag">RUBRIC Plan-D</span></div>
+                    <div class="citation__quote citation__quote--exam">"Calculation of the minimum expected count."</div>
+                    <div class="citation__source">── Scoring Rubric · Chi-square Test for Independence（1142 Final Exam）</div>
+                  </div>
+                  <div class="verified-row"><span class="verified">✓ Rubric 引用</span></div>
+                </div>
+              </details>
+              <details class="acc" open>
+                <summary>Do · 5 / 5 ✓（逐項評分＋程式驗算）</summary>
+                <div class="acc__body">
+                  <div class="scipy-block">scipy.stats.chi2_contingency([[72, 38], [28, 52]])
+chi2      = 17.2260
+p-value   = 0.0000333
+dof       = 1
+expected  = [[57.89, 52.11], [42.11, 37.89]]
+critical  = 3.8415  (α = 0.05, df = 1)</div>
+                  <div class="table-scroll">
+                    <table class="item-table">
+                      <tr><th>Item</th><th>Score</th><th>Correction and Explanation</th></tr>
+                      <tr><td>Do-A</td><td>1</td><td>Correct application of the chi-square formula Σ(O−E)²/E.</td></tr>
+                      <tr><td>Do-B</td><td>1</td><td>Test statistic 17.24（≈ model 17.226，rounding acceptable）.</td></tr>
+                      <tr><td>Do-C</td><td>1</td><td>Degrees of freedom correctly computed as df = 1.</td></tr>
+                      <tr><td>Do-D</td><td>1</td><td>Correct critical value（χ² ≈ 3.84146）.</td></tr>
+                      <tr><td>Do-E</td><td>1</td><td>Observed / expected counts shown and substituted per cell.</td></tr>
+                    </table>
+                  </div>
+                  <div class="citation">
+                    <div class="citation__head"><span class="citation__tag">RUBRIC Do-B</span></div>
+                    <div class="citation__quote citation__quote--exam">"Correct calculation of the test statistic (17.226)."</div>
+                    <div class="citation__source">── Scoring Rubric · Chi-square Test for Independence（1142 Final Exam）</div>
+                  </div>
+                  <div class="verified-row">
+                    <span class="verified">✓ scipy 驗算</span>
+                    <span class="verified">✓ Rubric 引用</span>
+                  </div>
+                </div>
+              </details>
+              <details class="acc">
+                <summary>Conclude · 5 / 5 ✓（逐項評分）</summary>
+                <div class="acc__body">
+                  <div class="table-scroll">
+                    <table class="item-table">
+                      <tr><th>Item</th><th>Score</th><th>Correction and Explanation</th></tr>
+                      <tr><td>Conclude-A</td><td>1</td><td>Logical comparison using the critical value method.</td></tr>
+                      <tr><td>Conclude-B</td><td>1</td><td>Correct numerical comparison（17.24 &gt; 3.841）.</td></tr>
+                      <tr><td>Conclude-C</td><td>1</td><td>Correct statistical decision: Reject H₀.</td></tr>
+                      <tr><td>Conclude-D</td><td>1</td><td>Proper opening（sufficiency of evidence）.</td></tr>
+                      <tr><td>Conclude-E</td><td>1</td><td>Contextual closing: mentions segment × channel relationship.</td></tr>
+                    </table>
+                  </div>
+                  <div class="citation">
+                    <div class="citation__head"><span class="citation__tag">RUBRIC Conclude-E</span></div>
+                    <div class="citation__quote citation__quote--exam">"Contextual closing (specifically mentions 'relationship between customer segment and advertising channel')."</div>
+                    <div class="citation__source">── Scoring Rubric · Chi-square Test for Independence（1142 Final Exam）</div>
+                  </div>
+                  <div class="verified-row"><span class="verified">✓ Rubric 引用</span></div>
+                </div>
+              </details>
+            </div>
+
+            <div class="verdict" style="margin-top: var(--sp-4);">
+              <span class="verdict__stamp">教授覆核</span>
+              <span class="verdict__text">無誤判，雙模型結論一致（opus-4.8 ∥ sonnet-4.6）</span>
+              <span class="meter-group">
+                <span class="meter"><span class="meter__fill" style="width: 97%;"></span><span class="meter__tick"></span></span>
+                <span class="meter-value">0.97</span>
+              </span>
+            </div>
+
+            <div class="callout" style="margin-top: var(--sp-4);">
+              <strong>英文寫作建議（English 18 / 20 · CEFR B2）：</strong><br>
+              ①「significant level」→ 正確名詞為「<b>significance level</b>」；正式語境以 "whether" 取代 "if"。<br>
+              ② 計算式後補上句點再接子句：「… = 37.89<b>.</b> Since 37.89 ≥ 5, the condition is satisfied.」
+            </div>
+
+            <div class="report-links">
+              <a class="btn btn--secondary" href="evaluate_output/113408515_陳苡瑄_National%20Central%20University%202_第1次.html" target="_blank" rel="noopener">查看完整回饋報告 ↗</a>
+              <a class="btn btn--ghost" href="student_hand_write/陳苡瑄手寫.jpeg" target="_blank" rel="noopener">查看手寫原稿 ↗</a>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境 · 批改資料取自真實管線範例</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/db.js"></script>
+  <script>
+    (function () {
+      /* ── 題目資料 ── */
+      var QUESTIONS = {
+        ncu2: {
+          chip: 'FRQ', unit: '卡方獨立性檢定', meta: '20 pts · Q-ID chi_002 · NCU 2',
+          html: '<strong>Chi-square Test for Independence</strong><br>' +
+            'A marketing manager wants to determine if customer segment and preferred advertising ' +
+            'channel are related. At the 0.05 level of significance, is there evidence of a relationship? ' +
+            'Please utilize a complete S-P-D-C framework.' +
+            '<table><tr><th>Customer Segment</th><th>Social Media</th><th>Email Campaign</th><th>Total</th></tr>' +
+            '<tr><td>Millennial (18–35)</td><td>72</td><td>38</td><td>110</td></tr>' +
+            '<tr><td>Gen X (36–55)</td><td>28</td><td>52</td><td>80</td></tr>' +
+            '<tr><td><b>Total</b></td><td>100</td><td>90</td><td>190</td></tr></table>'
+        },
+        q1: {
+          chip: 'Q1', unit: '假設檢定', meta: '16 pts · Q-ID ht_007',
+          html: '<strong>Question 1 — Customer Waiting Time</strong><br>' +
+            'A coffee shop owner claims that the mean customer waiting time is at most 4 minutes. ' +
+            'A random sample of 36 customers has a mean waiting time of x̄ = 4.6 minutes with a ' +
+            'sample standard deviation of s = 1.5 minutes. At the α = 0.05 significance level, ' +
+            'is there sufficient evidence to conclude that the mean waiting time exceeds 4 minutes?'
+        },
+        q2: {
+          chip: 'Q2', unit: '兩樣本檢定', meta: '16 pts · Q-ID ht_012',
+          html: '<strong>Question 2 — Study Method Comparison</strong><br>' +
+            'Two groups of students used different study methods. Group A (n₁ = 32): x̄₁ = 78.4, ' +
+            's₁ = 8.2. Group B (n₂ = 30): x̄₂ = 74.1, s₂ = 9.1. At α = 0.05, test whether the two ' +
+            'study methods lead to different mean exam scores.'
+        },
+        q3: {
+          chip: 'Q3', unit: '比例檢定', meta: '16 pts · Q-ID pz_003',
+          html: '<strong>Question 3 — Defect Rate</strong><br>' +
+            'A manufacturer claims its defect rate is 5%. In a random sample of 400 items, ' +
+            '28 are defective. At α = 0.05, test whether the true defect rate differs from 5%.'
+        }
+      };
+
+      /* ── AI 辨識重寫（[[值|id]] 為疑問圈選點）── */
+      var SIM_LINES = [
+        ['sec', 'State'],
+        ['', 'We want to determine if there is a significant relationship'],
+        ['', 'between customer segment and preferred advertising channel'],
+        ['', 'at the 0.05 significance level.'],
+        ['', 'H₀ : customer segment and preferred ad channel are independent.'],
+        ['', 'Ha : customer segment and preferred ad channel are dependent.'],
+        ['', 'significant level α = 0.05.'],
+        ['sec', 'Plan'],
+        ['', 'We use chi-square test for independence.'],
+        ['', 'Randomness : we assume the 190 customers represent a random sample.'],
+        ['', 'Independence : n = 190 is likely less than 10% of all customers.'],
+        ['', 'Large counts : all expected counts must be ≥ 5'],
+        ['', 'E = (row total × column total) / grand total'],
+        ['', 'Min expected = 80×90 / 190 = [[37.89|simAmb1]] ≥ 5 , condition satisfied.'],
+        ['sec', 'Do'],
+        ['', 'Observed (O) : 72 , 38 , 28 , 52'],
+        ['', 'Expected (E) : 57.89 , 52.11 , 42.11 , 37.89'],
+        ['', 'χ² = Σ(Oᵢ−Eᵢ)²/Eᵢ = (72−57.89)²/57.89 + (38−52.11)²/52.11'],
+        ['', '      + (28−42.11)²/42.11 + (52−37.89)²/37.89 = [[17.24|simAmb2]]'],
+        ['', 'df = (r−1)(c−1) = (2−1)(2−1) = 1'],
+        ['', 'critical value χ²₀.₀₅ = 3.84146 at α = 0.05.'],
+        ['sec', 'Conclude'],
+        ['', 'Since χ² = 17.24 is greater than the critical value 3.841 ,'],
+        ['', 'it falls into the rejection region. We reject H₀ at α = 0.05.'],
+        ['', 'There is sufficient evidence at the 0.05 level of significance'],
+        ['', 'to conclude that there is a significant relationship between'],
+        ['', 'customer segment and preferred advertising channel.']
+      ];
+
+      /* ── 真實 OCR 全文（節錄自 ocr_output）── */
+      var OCR_RAW = 'State\nWe want to determine if there is a significant relationship between customer segment and preferred advertising channel at the 0.05 significance level.\nH0 = Customer segment and preferred advertising channel are independent.\nHa = Customer segment and preferred advertising channel are dependent.\nSignificant level alpha = 0.05.\n\nPlan\nWe use chi-square test for independence.\nRandomness: We assume the 190 customers represent a random sample from the target population.\nIndependence: The total sample size n = 190 is likely less than 10% of all customers in the population.\nLarge counts: All expected counts must be >= 5.\nExpected count E = (row total * column total) / grand total.\nMin expected = (80 * 90) / 190 = 37.89\nSince 37.89 >= 5, the condition is satisfied.\n\nDo\nObserved (O): Millennial/Social Media = 72, Millennial/Email Campaign = 38, Gen X/Social Media = 28, Gen X/Email Campaign = 52\nExpected (E): 57.89, 52.11, 42.11, 37.89\nchi-square = sum((Oi - Ei)^2 / Ei) = 17.24\ndf = (r - 1)(c - 1) = (2 - 1)(2 - 1) = 1\nCritical value chi-square = 3.84146 at alpha = 0.05.\n\nConclude\nSince the calculated test statistic chi-square = 17.24 is greater than the critical value 3.841, it falls into the rejection region. We reject H0 at alpha = 0.05. There is sufficient evidence at the 0.05 level of significance to conclude that there is a significant relationship between customer segment and preferred advertising channel.';
+
+      /* ── 元素 ── */
+      var $ = function (id) { return document.getElementById(id); };
+      var qSelect = $('qSelect'), demoHint = $('demoHint');
+      var uploadCard = $('uploadCard'), uploadZone = $('uploadZone'), scanView = $('scanView');
+      var scanPhoto = $('scanPhoto');
+      var rewriteCard = $('rewriteCard'), rewriteChip = $('rewriteChip'), simPaper = $('simPaper'), simHead = $('simHead');
+      var ocrCard = $('ocrCard'), ocrChip = $('ocrChip'), ocrResult = $('ocrResult');
+      var ocrSteps = Array.prototype.slice.call(document.querySelectorAll('#ocrSteps li'));
+      var confirmCard = $('confirmCard');
+      var submitState = $('submitState'), btnSubmit = $('btnSubmit');
+      var emptyBox = $('emptyBox'), flowCard = $('flowCard'), flowStatus = $('flowStatus');
+      var flowChips = Array.prototype.slice.call(document.querySelectorAll('#flowChips .pchip'));
+      var thinkCard = $('thinkCard'), thinkLog = $('thinkLog'), thinkChip = $('thinkChip');
+      var resultBody = $('resultBody'), resultAside = $('resultAside');
+
+      $('ocrRaw').textContent = OCR_RAW;
+
+      var state = { scan: false, ocr: false, grading: false, timers: [] };
+      var circles = {};
+      var picks = { amb1: null, amb2: null, conclusion: null };
+      var CHIP_BASE = ['RAG引用', 'CODE驗算', 'SCHEMA', '教授覆核'];
+
+      function later(fn, ms) { state.timers.push(setTimeout(fn, ms)); }
+      function clearTimers() { state.timers.forEach(clearTimeout); state.timers = []; }
+
+      /* ── 題目切換（完整重置；批改展示僅支援真實案例 ncu2）── */
+      function renderQuestion() {
+        var q = QUESTIONS[qSelect.value];
+        $('qChip').textContent = q.chip;
+        $('qUnit').textContent = q.unit;
+        $('qMeta').textContent = q.meta;
+        $('examSheet').innerHTML = q.html;
+        var isReal = qSelect.value === 'ncu2';
+        demoHint.hidden = isReal;
+        uploadCard.hidden = !isReal;
+        resetDemo();
+      }
+      qSelect.addEventListener('change', renderQuestion);
+
+      /* ── AI 辨識重寫：逐行親手寫一次，並圈出疑問處 ── */
+      function circleOver(sp) {
+        var w = sp.offsetWidth + 18, h = 27;
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'doubt');
+        svg.setAttribute('width', w);
+        svg.setAttribute('height', h);
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.style.left = (sp.offsetLeft - 9) + 'px';
+        svg.style.top = (sp.offsetTop + 1) + 'px';
+        var el = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+        el.setAttribute('cx', w / 2);
+        el.setAttribute('cy', h / 2);
+        el.setAttribute('rx', w / 2 - 2);
+        el.setAttribute('ry', h / 2 - 2);
+        el.setAttribute('pathLength', '100');
+        svg.appendChild(el);
+        simPaper.appendChild(svg);
+        requestAnimationFrame(function () { svg.classList.add('draw'); });
+        circles[sp.id] = svg;
+      }
+      function startRewrite() {
+        rewriteCard.hidden = false;
+        rewriteChip.className = 'chip chip--warn';
+        rewriteChip.innerHTML = '<span class="chip__dot"></span>重寫中…';
+        circles = {};
+        Array.prototype.slice.call(simPaper.querySelectorAll('.sim-line, .doubt')).forEach(function (n) {
+          n.parentNode.removeChild(n);
+        });
+        simHead.classList.remove('is-writing');
+        var lineEls = SIM_LINES.map(function (l) {
+          var div = document.createElement('div');
+          div.className = 'write-line sim-line' + (l[0] === 'sec' ? ' sec' : '');
+          var m = l[1].match(/^(.*)\[\[(.+)\|(.+)\]\](.*)$/);
+          if (m) {
+            div.appendChild(document.createTextNode(m[1]));
+            var sp = document.createElement('span');
+            sp.className = 'amb-hl';
+            sp.id = m[3];
+            sp.textContent = m[2];
+            div.appendChild(sp);
+            div.appendChild(document.createTextNode(m[4]));
+          } else {
+            div.textContent = l[1];
+          }
+          simPaper.appendChild(div);
+          return div;
+        });
+        var all = [simHead].concat(lineEls);
+        all.forEach(function (el, i) {
+          later(function () {
+            el.classList.add('is-writing');
+            simPaper.scrollTop = Math.max(0, el.offsetTop - simPaper.clientHeight + 60);
+            var sp = el.querySelector('.amb-hl');
+            if (sp) later(function () { circleOver(sp); }, 550);
+          }, 150 + i * 170);
+        });
+        later(function () {
+          rewriteChip.className = 'chip chip--serious';
+          rewriteChip.innerHTML = '<span class="chip__dot"></span>2 處疑問待核取';
+          confirmCard.hidden = false;
+          confirmCard.classList.add('fade-up');
+          state.ocr = true;
+          updateSubmitState();
+        }, 150 + all.length * 170 + 850);
+      }
+
+      /* ── 全流程重置 ── */
+      function resetDemo() {
+        clearTimers();
+        state.scan = false; state.ocr = false; state.grading = false;
+        picks = { amb1: null, amb2: null, conclusion: null };
+        uploadZone.hidden = false; scanView.hidden = true;
+        scanPhoto.classList.remove('is-scanning');
+        rewriteCard.hidden = true;
+        circles = {};
+        Array.prototype.slice.call(simPaper.querySelectorAll('.sim-line, .doubt')).forEach(function (n) {
+          n.parentNode.removeChild(n);
+        });
+        simHead.classList.remove('is-writing');
+        ocrCard.hidden = true; ocrResult.hidden = true;
+        ocrChip.className = 'chip chip--warn';
+        ocrChip.innerHTML = '<span class="chip__dot"></span>辨識中…';
+        ocrSteps.forEach(function (li) {
+          li.className = '';
+          li.querySelector('.ocr-steps__mark').textContent = '●';
+        });
+        confirmCard.hidden = true;
+        document.querySelectorAll('.choice').forEach(function (b) { b.classList.remove('is-picked'); });
+        $('keyStat').value = '';
+        $('keyDf').value = '1'; $('keyP').value = '3.84146';
+        $('keyH0').value = 'segment 與 channel 獨立（independent）';
+        $('keyH1').value = 'segment 與 channel 相依（dependent）';
+        btnSubmit.textContent = '提交批改';
+        resetResultPane();
+        updateSubmitState();
+      }
+
+      function resetResultPane() {
+        emptyBox.hidden = false;
+        flowCard.hidden = true; thinkCard.hidden = true; resultBody.hidden = true;
+        flowStatus.textContent = '';
+        thinkLog.innerHTML = '';
+        thinkChip.className = 'chip chip--info';
+        thinkChip.innerHTML = '<span class="chip__dot"></span>adaptive thinking';
+        flowChips.forEach(function (c, i) { c.className = 'pchip'; c.textContent = CHIP_BASE[i]; });
+        $('dbCommit').hidden = true;
+        $('dbCommitText').textContent = '';
+        $('dbCommitChip').hidden = true;
+        $('flowSub').textContent = '';
+      }
+
+      /* ── 載入真實手寫作答 ── */
+      $('btnSample').addEventListener('click', loadSample);
+      $('btnFile').addEventListener('click', loadSample);
+      $('btnReupload').addEventListener('click', resetDemo);
+
+      function loadSample() {
+        uploadZone.hidden = true;
+        scanView.hidden = false;
+        state.scan = true;
+        submitState.textContent = '影像已載入，掃描辨識中…';
+        scanPhoto.classList.add('is-scanning');          /* 真實掃描動畫（光束掃兩趟） */
+        later(function () { scanPhoto.classList.remove('is-scanning'); }, 3300);
+        later(runOcr, 1100);
+        updateSubmitState();
+      }
+
+      /* ── OCR 模擬（輸出為真實管線的辨識結果）── */
+      function runOcr() {
+        ocrCard.hidden = false;
+        var i = 0;
+        function step() {
+          if (i > 0) {
+            ocrSteps[i - 1].className = 'is-done';
+            ocrSteps[i - 1].querySelector('.ocr-steps__mark').textContent = '✓';
+          }
+          if (i < ocrSteps.length) {
+            ocrSteps[i].className = 'is-active';
+            i += 1;
+            later(step, 620);
+          } else {
+            ocrChip.className = 'chip chip--ok';
+            ocrChip.innerHTML = '<span class="chip__dot"></span>辨識完成 · 整體信心 0.96';
+            ocrResult.hidden = false;
+            ocrResult.classList.add('fade-up');
+            startRewrite();   /* 辨識完成 → AI 在底下親手重寫並圈出疑問處 */
+          }
+        }
+        step();
+      }
+
+      /* ── 模稜兩可／結論核取 ── */
+      document.querySelectorAll('.choice-row__opts').forEach(function (row) {
+        var group = row.getAttribute('data-group');
+        row.querySelectorAll('.choice').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            row.querySelectorAll('.choice').forEach(function (b) { b.classList.remove('is-picked'); });
+            btn.classList.add('is-picked');
+            picks[group] = btn.getAttribute('data-value');
+            /* 核取後：重寫稿上的疑問圈轉綠、值同步 */
+            function resolve(id, val) {
+              var sp = $(id);
+              if (sp) { sp.textContent = val; sp.classList.add('is-ok'); }
+              if (circles[id]) circles[id].classList.add('is-resolved');
+            }
+            if (group === 'amb1') resolve('simAmb1', picks.amb1);
+            if (group === 'amb2') {
+              resolve('simAmb2', picks.amb2);
+              $('keyStat').value = picks.amb2;
+            }
+            if (!['amb1', 'amb2', 'conclusion'].filter(function (k) { return !picks[k]; }).length) {
+              rewriteChip.className = 'chip chip--ok';
+              rewriteChip.innerHTML = '<span class="chip__dot"></span>疑問已全數確認';
+            }
+            updateSubmitState();
+          });
+        });
+      });
+
+      /* ── 符號快捷鍵（插入最後聚焦的 H₀/Ha 欄）── */
+      var lastKeyInput = $('keyH0');
+      [$('keyH0'), $('keyH1')].forEach(function (inp) {
+        inp.addEventListener('focus', function () { lastKeyInput = inp; });
+      });
+      document.querySelectorAll('.sym-strip .sym-key').forEach(function (key) {
+        key.addEventListener('click', function () {
+          var sym = key.getAttribute('data-sym');
+          var el = lastKeyInput;
+          var s = el.selectionStart === null ? el.value.length : el.selectionStart;
+          var e = el.selectionEnd === null ? s : el.selectionEnd;
+          el.value = el.value.slice(0, s) + sym + el.value.slice(e);
+          el.focus();
+          el.setSelectionRange(s + sym.length, s + sym.length);
+          el.classList.add('flash');
+          later(function () { el.classList.remove('flash'); }, 150);
+        });
+      });
+
+      /* ── 提交狀態 ── */
+      function updateSubmitState() {
+        if (qSelect.value !== 'ncu2') {
+          submitState.textContent = '批改展示以真實案例（NCU 2）為主';
+          submitState.className = 'submit-bar__state';
+          btnSubmit.disabled = true;
+          return;
+        }
+        if (!state.scan) {
+          submitState.textContent = '請先上傳手寫作答';
+          submitState.className = 'submit-bar__state';
+          btnSubmit.disabled = true;
+          return;
+        }
+        if (!state.ocr) {
+          submitState.textContent = 'OCR 辨識中…';
+          submitState.className = 'submit-bar__state';
+          btnSubmit.disabled = true;
+          return;
+        }
+        var need = ['amb1', 'amb2', 'conclusion'].filter(function (k) { return !picks[k]; }).length;
+        if (need > 0) {
+          submitState.textContent = '尚須確認 ' + need + ' 處（低信心數字與最終結論）';
+          submitState.className = 'submit-bar__state';
+          btnSubmit.disabled = true;
+        } else {
+          submitState.textContent = '已確認 3 / 3 處，可提交批改';
+          submitState.className = 'submit-bar__state is-ready';
+          btnSubmit.disabled = state.grading;
+        }
+      }
+
+      /* ── AI 批改思考過程（真實案例：20 分制 SPDC rubric）── */
+      var THINK = [
+        { s: 0, tag: '[RAG]',      cls: '',       t: '檢索題庫 chi_002 → 命中 rubric「Chi-square Test for Independence」（20 pts，SPDC 各 5）' },
+        { s: 0, tag: '[RAG]',      cls: '',       t: '載入 teacher prompt 與標準解答（2×2 列聯表：72 / 38 / 28 / 52，n = 190）' },
+        { s: 0, tag: '[讀取]',     cls: 'dim',    t: 'OCR 作答載入：SPDC 四段齊全；α=0.05、χ²=17.24、df=1、臨界值 3.84146' },
+        { s: 0, tag: '[State]',    cls: 'dim',    t: 'A~E 逐項核對：目標／H₀／Ha／α／脈絡皆正確 → 5 / 5' },
+        { s: 0, tag: '[Plan]',     cls: 'dim',    t: '卡方獨立性檢定 ✓；隨機性、10% 規則、期望次數 ≥ 5（min 37.89）皆已驗證 → 5 / 5' },
+        { s: 1, tag: '[CODE]',     cls: 'code',   t: 'scipy.stats.chi2_contingency([[72,38],[28,52]])：χ² = 17.2260，df = 1，p = 3.3e-05' },
+        { s: 1, tag: '[CODE]',     cls: 'code',   t: '期望次數 = [57.89, 52.11, 42.11, 37.89]；臨界值 χ²(0.05, 1) = 3.8415' },
+        { s: 1, tag: '[比對]',     cls: 'dim',    t: '學生 χ² = 17.24 ≈ 17.226（四捨五入差異，依 rubric 不扣分）；df、臨界值一致' },
+        { s: 1, tag: '[Do]',       cls: 'dim',    t: '公式、統計量、df、臨界值、逐格代入皆正確 → 5 / 5' },
+        { s: 1, tag: '[判讀]',     cls: 'dim',    t: '17.24 > 3.841 → 落入拒絕域，拒絕 H₀；方向正確' },
+        { s: 1, tag: '[Conclude]', cls: 'dim',    t: '比較、數值、判定、開頭語、脈絡結尾完整 → 5 / 5' },
+        { s: 2, tag: '[SCHEMA]',   cls: '',       t: '產出 Grading JSON：統計 20 / 20；英文學術寫作另評 18 / 20（CEFR B2）' },
+        { s: 3, tag: '[覆核]',     cls: 'review', t: '教授視角雙模型覆核（opus-4.8 ∥ sonnet-4.6）：無誤判，兩模型結論一致' },
+        { s: 3, tag: '[覆核]',     cls: 'review', t: 'confidence = 0.97 ≥ 門檻 0.85 → 通過，結果落庫' }
+      ];
+      var STAGE_STATUS = ['檢索 Rubric 與 teacher prompt…', 'scipy 驗算與逐項批改中…', '結構化封裝中…', '教授視角覆核中…'];
+
+      btnSubmit.addEventListener('click', function () {
+        if (btnSubmit.disabled) return;
+        state.grading = true;
+        updateSubmitState();
+        resetResultPane();
+        emptyBox.hidden = true;
+        flowCard.hidden = false;
+        thinkCard.hidden = false;
+
+        /* 建立本次提交紀錄（時間精確到秒），批改完成後寫入模擬資料庫 */
+        var record = {
+          id: SGDB.nextId(),
+          student: '陳苡瑄', sid: '113408515', q: '卡方獨立性檢定',
+          score: 20, max: 20, conf: 0.97,
+          status: 'graded',
+          time: SGDB.now(),
+          spdc: { S: 5, P: 5, D: 5, C: 5 },
+          comment: 'SPDC 框架完整、檢定選擇正確、條件驗證齊全、計算與結論皆正確（χ² = 17.24 ≈ 17.226，四捨五入差異依 rubric 不扣分）。統計 20 / 20；英文學術寫作 18 / 20（CEFR B2）。',
+          reason: null,
+          think: THINK.map(function (l) { return { tag: l.tag, cls: l.cls, t: l.t }; })
+        };
+        $('flowSub').textContent = record.id + ' · ' + record.time;
+
+        /* 窄幅或結果區在視窗外時，捲動到結果面板 */
+        var rect = resultAside.getBoundingClientRect();
+        if (window.innerWidth <= 960 || rect.top > window.innerHeight * 0.6 || rect.top < 0) {
+          resultAside.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        var i = 0, stage = -1;
+        function tick() {
+          if (i >= THINK.length) { finish(); return; }
+          var line = THINK[i];
+          if (line.s !== stage) {
+            if (stage >= 0) {
+              flowChips[stage].className = 'pchip pchip--done';
+              flowChips[stage].textContent = '✓ ' + CHIP_BASE[stage];
+            }
+            stage = line.s;
+            flowChips[stage].className = 'pchip pchip--active';
+            flowStatus.textContent = STAGE_STATUS[stage];
+          }
+          var div = document.createElement('div');
+          div.className = 'think__line';
+          var tag = document.createElement('span');
+          tag.className = 'think__tag' + (line.cls ? ' think__tag--' + line.cls : '');
+          tag.textContent = line.tag;
+          var txt = document.createElement('span');
+          txt.className = 'think__text';
+          txt.textContent = line.t;
+          div.appendChild(tag);
+          div.appendChild(txt);
+          thinkLog.appendChild(div);
+          thinkLog.scrollTop = thinkLog.scrollHeight;
+          i += 1;
+          later(tick, 430);
+        }
+        function finish() {
+          flowChips[3].className = 'pchip pchip--done';
+          flowChips[3].textContent = '✓ ' + CHIP_BASE[3];
+          flowStatus.textContent = '覆核通過 · 信心 0.97 ≥ 0.85，免人工複核';
+          thinkChip.className = 'chip chip--ok';
+          thinkChip.innerHTML = '<span class="chip__dot"></span>完成 · ' + THINK.length + ' 步推理';
+          commitToDb();
+        }
+
+        /* 落地資料庫動畫：SQL 逐字打出 → 已落庫 → 顯示結果 */
+        function commitToDb() {
+          var box = $('dbCommit'), txt = $('dbCommitText'), chip = $('dbCommitChip');
+          box.hidden = false;
+          var sql = "INSERT INTO submissions VALUES ('" + record.id + "', '陳苡瑄', 'chi_002', 20, 0.97, '" + record.time + "')";
+          var i = 0;
+          function type() {
+            if (i <= sql.length) {
+              txt.textContent = sql.slice(0, i);
+              i += 2;
+              later(type, 18);
+            } else {
+              SGDB.add(record);
+              chip.hidden = false;
+              flowStatus.textContent = '批改完成 · 已寫入資料庫，教師端即時可見';
+              $('resultMeta').textContent = record.id + ' · 提交時間 ' + record.time;
+              later(function () {
+                resultBody.hidden = false;
+                resultBody.classList.add('fade-up');
+                state.grading = false;
+                btnSubmit.textContent = '重新提交';
+                updateSubmitState();
+              }, 450);
+            }
+          }
+          type();
+        }
+        tick();
+      });
+
+      renderQuestion();
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

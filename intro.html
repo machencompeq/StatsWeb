@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系統介紹 — StatGrade AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <style>
+    /* 版面：左 sticky 目錄 + 右閱讀主欄 */
+    .intro-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: var(--sp-12);
+      align-items: start;
+    }
+    .intro-main { max-width: var(--shell-read); }
+    .toc {
+      position: sticky;
+      top: 80px;
+      padding-top: var(--sp-2);
+    }
+    .toc__label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      color: var(--ink-3);
+      margin-bottom: var(--sp-2);
+    }
+    .toc__link {
+      display: block;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ink-2);
+      padding: 5px 0 5px var(--sp-3);
+      border-left: 2px solid var(--line);
+    }
+    .toc__link:hover { color: var(--ink); text-decoration: none; }
+    .toc__link.is-active {
+      color: var(--brand-600);
+      font-weight: 500;
+      border-left-color: var(--brand-600);
+    }
+    @media (max-width: 1023px) {
+      .intro-layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+    }
+
+    /* 章節 */
+    .sec { margin-bottom: var(--sp-12); scroll-margin-top: 76px; }
+    .sec h2 { font-size: 19px; font-weight: 700; margin-bottom: var(--sp-3); }
+    .sec > p { color: var(--ink-2); }
+
+    /* §1 後果欄 */
+    .td-crit { color: var(--crit-ink); }
+
+    /* §2 原則卡 */
+    .guard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); }
+    .guard-grid h3 { font-size: 15px; margin-bottom: var(--sp-2); }
+    .guard-grid p { font-size: 13px; color: var(--ink-2); }
+    .guard__map {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--ink-3);
+      margin-top: var(--sp-3);
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--line);
+    }
+    .ic {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink);
+      background: var(--inset);
+      border: 1px solid var(--line);
+      border-radius: var(--r-xs);
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+
+    /* §3 timeline 步驟名旁掛 pchip */
+    .timeline__title { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+
+    /* §4 SPDC 卡 */
+    .spdc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
+    .spdc-grid .card { padding: var(--sp-4); }
+    .spdc-grid__head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+    .spdc-grid__head h3 { font-size: 15px; }
+    .spdc-grid p { font-size: 13px; color: var(--ink-2); }
+    .spdc-grid__pts {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--ink-3);
+      margin-top: var(--sp-2);
+    }
+    @media (max-width: 960px) {
+      .guard-grid, .spdc-grid { grid-template-columns: 1fr; }
+    }
+
+    /* §5 迷你 demo 的符號鍵列 */
+    .sym-demo-grid { grid-template-columns: repeat(8, 1fr); }
+    @media (max-width: 720px) { .sym-demo-grid { grid-template-columns: repeat(4, 1fr); } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <nav class="nav__links" id="navLinks"></nav>
+      <div class="nav__auth" id="navAuth"></div>
+      <button class="nav__toggle" aria-label="選單" hidden>☰</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell page">
+      <div class="page-head">
+        <div>
+          <h1>系統介紹</h1>
+          <div class="rule-double"></div>
+        </div>
+        <div class="page-head__meta">依《架構規格書 v0.1》與《輸入層規格 v0.1》整理</div>
+      </div>
+      <p class="muted" style="max-width: var(--shell-read); margin-bottom: var(--sp-10);">
+        StatGrade AI 如何讓 AI 批改統計申論題而不「一本正經地胡說八道」——
+        從三類幻覺風險，到三管齊下的防護機制與完整批改資料流，六節讀完全貌。
+      </p>
+
+      <div class="intro-layout">
+        <!-- 左側 sticky 目錄（<1024px 隱藏） -->
+        <aside class="toc" aria-label="本頁目錄">
+          <div class="toc__label">目錄</div>
+          <a class="toc__link" href="#s1">為什麼統計批改怕幻覺</a>
+          <a class="toc__link" href="#s2">三管齊下防幻覺</a>
+          <a class="toc__link" href="#s3">單題批改資料流</a>
+          <a class="toc__link" href="#s4">SPDC 作答框架</a>
+          <a class="toc__link" href="#s5">數學符號輸入層</a>
+          <a class="toc__link" href="#s6">常見問題</a>
+        </aside>
+
+        <!-- 右主欄 -->
+        <article class="intro-main">
+
+          <!-- §1 -->
+          <section class="sec" id="s1">
+            <span class="eyebrow eyebrow--brand">§ 1 · 為什麼統計批改怕幻覺</span>
+            <h2>LLM 本質是文字接龍，統計題正好踩中它的弱點</h2>
+            <p>
+              統計學作業包含大量<strong>數學計算</strong>（開根號、卡方分配、查 t 表）、
+              <strong>統計檢定判讀</strong>（p 值與 α 比較）與<strong>專有名詞</strong>。
+              語言模型靠機率接龍生成文字，在以下三類情境最容易「一本正經地胡說八道」：
+            </p>
+            <div class="card card--flush">
+              <div class="table-scroll">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>幻覺類型</th>
+                      <th>範例</th>
+                      <th>後果</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>計算幻覺</strong></td>
+                      <td>標準差、自由度、檢定統計量算錯</td>
+                      <td class="td-crit">把對的扣成錯、錯的給滿分</td>
+                    </tr>
+                    <tr>
+                      <td><strong>標準答案幻覺</strong></td>
+                      <td>自行腦補一套「標準解法」</td>
+                      <td class="td-crit">與課程 Rubric 不符</td>
+                    </tr>
+                    <tr>
+                      <td><strong>判讀幻覺</strong></td>
+                      <td>p = 0.03、α = 0.05 卻說「不顯著」</td>
+                      <td class="td-crit">結論方向相反</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- §2 -->
+          <section class="sec" id="s2">
+            <span class="eyebrow eyebrow--brand">§ 2 · 三管齊下防幻覺</span>
+            <h2>每一類幻覺，都對應一道技術防線</h2>
+            <p>設計原則是「不信任模型的自由發揮」：凡是能被程式或原文釘死的環節，一律釘死。</p>
+            <div class="guard-grid">
+              <article class="card card--soft">
+                <h3>不讓模型憑空批改</h3>
+                <p>
+                  標準答案與 Rubric 以 document block 餵入並開啟引用，模型批改時必須引用
+                  Rubric 的確切文字片段，絕不可自行假設另一套解法。
+                </p>
+                <div class="guard__map">原則 → <span class="ic">RAG</span> + <span class="ic">Citations</span></div>
+              </article>
+              <article class="card card--soft">
+                <h3>不讓模型自己算數學</h3>
+                <p>
+                  檢定統計量、自由度、p 值全部由 server-side 沙箱實際執行 Python 算出，
+                  再拿來比對學生答案；絕不用文字接龍硬算來扣分。
+                </p>
+                <div class="guard__map">原則 → server-side <span class="ic">scipy</span> 驗算（<span class="ic">Code Execution</span>）</div>
+              </article>
+              <article class="card card--soft">
+                <h3>不讓模型自由發揮輸出</h3>
+                <p>
+                  批改結果以強制 JSON schema 輸出（<span class="ic">messages.parse()</span> +
+                  Pydantic 驗證），模型聚焦在指定評分維度，大幅減少廢話與自由發揮。
+                </p>
+                <div class="guard__map">原則 → <span class="ic">Structured Outputs</span></div>
+              </article>
+            </div>
+            <div class="callout">
+              注意：Citations 與 Structured Output <strong>不可同時使用</strong>（API 會回 400），
+              故 grounding 與 JSON 輸出分階段呼叫 —— 先帶引用批改與驗算，再結構化封裝。
+            </div>
+          </section>
+
+          <!-- §3 -->
+          <section class="sec" id="s3">
+            <span class="eyebrow eyebrow--brand">§ 3 · 單題批改資料流</span>
+            <h2>從學生按下送出，到分數落庫的五個步驟</h2>
+            <p>每一份作答都走完同一條流水線；任何一站不放行，就不會有分數送到學生眼前。</p>
+            <div class="card">
+              <ol class="timeline">
+                <li>
+                  <span class="timeline__num">1</span>
+                  <div class="timeline__title">RAG 檢索 <span class="pchip">RAG引用</span></div>
+                  <div class="timeline__desc">
+                    依題號從知識庫取出該題的 Rubric 與標準答案（以題號／統計單元切塊，
+                    確保不會撈到別的單元的答案）。
+                  </div>
+                </li>
+                <li>
+                  <span class="timeline__num">2</span>
+                  <div class="timeline__title">批改引擎 <span class="pchip">CITATIONS</span> <span class="pchip">CODE驗算</span></div>
+                  <div class="timeline__desc">
+                    Rubric 以 Citations grounding 錨定、Code Execution 寫 Python 算出正確的
+                    t、df、p 值，adaptive thinking 逐步推理 H₀/H₁ → 統計量 → p 值 → 結論。
+                  </div>
+                </li>
+                <li>
+                  <span class="timeline__num">3</span>
+                  <div class="timeline__title">結構化封裝 <span class="pchip">SCHEMA</span></div>
+                  <div class="timeline__desc">
+                    Structured Output 把批改分析封裝為固定 JSON：逐維度得分、引用片段、
+                    驗算數值，一欄都不能多、不能少。
+                  </div>
+                </li>
+                <li>
+                  <span class="timeline__num">4</span>
+                  <div class="timeline__title">教授視角覆核（雙模型） <span class="pchip">教授覆核</span></div>
+                  <div class="timeline__desc">
+                    第二階段由「統計學教授」視角檢查：有沒有把對的判錯、錯的判對？
+                    是否與程式計算結果一致？由 <span class="mono">claude-opus-4-8</span> 與
+                    <span class="mono">claude-sonnet-4-6</span> 雙模型獨立覆核，回傳結論與信心度。
+                  </div>
+                </li>
+                <li>
+                  <span class="timeline__num">5</span>
+                  <div class="timeline__title">信心分流</div>
+                  <div class="timeline__desc" style="display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
+                    信心度足夠 → <span class="chip chip--ok"><span class="chip__dot"></span>結果落庫</span>
+                    ／ 不足 → 先交<strong>雙模型仲裁</strong>（<span class="mono">claude-sonnet-4-6</span> 獨立重批，
+                    兩模型一致即落庫、免人工）／ 仲裁仍分歧 →
+                    <span class="chip chip--serious"><span class="chip__dot"></span>進人工複核佇列</span>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          <!-- §4 -->
+          <section class="sec" id="s4">
+            <span class="eyebrow eyebrow--brand">§ 4 · SPDC 作答框架</span>
+            <h2>四段式作答，四個維度給分</h2>
+            <p>
+              學生依 State → Plan → Do → Conclude 四段作答，AI 也照同樣四個維度逐項評分，
+              每維度 4 分、總分 16 分 —— 作答結構即評分結構。
+            </p>
+            <div class="spdc-grid">
+              <article class="card spdc-card spdc-card--s">
+                <div class="spdc-grid__head"><span class="spdc-mono">S</span><h3>State 陳述假設</h3></div>
+                <p>寫出 H₀ 與 H₁，並定義母體參數（如 μ 代表什麼）。</p>
+                <div class="spdc-grid__pts">4 pts</div>
+              </article>
+              <article class="card spdc-card spdc-card--p">
+                <div class="spdc-grid__head"><span class="spdc-mono">P</span><h3>Plan 選擇方法與條件</h3></div>
+                <p>選擇檢定方法，並檢查條件：隨機性、常態性／CLT、獨立性。</p>
+                <div class="spdc-grid__pts">4 pts</div>
+              </article>
+              <article class="card spdc-card spdc-card--d">
+                <div class="spdc-grid__head"><span class="spdc-mono">D</span><h3>Do 執行計算</h3></div>
+                <p>算出檢定統計量、自由度與 p 值 —— 這一段由 scipy 逐項驗算。</p>
+                <div class="spdc-grid__pts">4 pts</div>
+              </article>
+              <article class="card spdc-card spdc-card--c">
+                <div class="spdc-grid__head"><span class="spdc-mono">C</span><h3>Conclude 脈絡化結論</h3></div>
+                <p>依 p 值與 α 下結論，並回扣題目脈絡（不能只寫「拒絕 H₀」）。</p>
+                <div class="spdc-grid__pts">4 pts</div>
+              </article>
+            </div>
+          </section>
+
+          <!-- §5 -->
+          <section class="sec" id="s5">
+            <span class="eyebrow eyebrow--brand">§ 5 · 數學符號輸入層</span>
+            <h2>人看得懂 ↔ 電腦看得懂</h2>
+            <p>
+              學生看到的是課本上熟悉的符號（x̄、σ²、H₀…），電腦保存的是標準編碼
+              <span class="ic">LaTeX</span>：學生按下符號鈕，系統插入對應編碼，畫面以 KaTeX
+              即時渲染回符號，送出時保存的是機器可讀、可直接送批改的原始碼 ——
+              <strong>學生完全不需要懂 LaTeX</strong>。
+            </p>
+            <div class="card card--soft">
+              <div class="card__head">
+                <h3>迷你體驗：點一顆符號鍵，看電腦存了什麼</h3>
+              </div>
+              <div class="sym-panel">
+                <div class="sym-panel__grid sym-demo-grid" role="group" aria-label="符號鍵示範">
+                  <button class="sym-key" type="button" data-latex="\bar{x}">x̄</button>
+                  <button class="sym-key" type="button" data-latex="\mu">μ</button>
+                  <button class="sym-key" type="button" data-latex="\sigma^2">σ²</button>
+                  <button class="sym-key" type="button" data-latex="\alpha">α</button>
+                  <button class="sym-key" type="button" data-latex="H_0">H₀</button>
+                  <button class="sym-key" type="button" data-latex="\neq">≠</button>
+                  <button class="sym-key" type="button" data-latex="\sqrt{\ }">√</button>
+                  <button class="sym-key" type="button" data-latex="\sum">Σ</button>
+                </div>
+                <div class="sym-panel__preview" id="symPreview">
+                  <span class="sym-panel__preview-tag">電腦看到的</span>
+                  <span id="symLatex" class="muted">（點上方任一符號鍵）</span>
+                </div>
+              </div>
+              <p class="text-sm muted" style="margin-top: var(--sp-2);">
+                正式版以 MathLive 虛擬鍵盤輸出 LaTeX、KaTeX 渲染回符號；本頁僅示範「符號 ↔ 編碼」的對應概念。
+              </p>
+            </div>
+          </section>
+
+          <!-- §6 -->
+          <section class="sec" id="s6" style="margin-bottom: 0;">
+            <span class="eyebrow eyebrow--brand">§ 6 · 常見問題</span>
+            <h2>學生最常問的四件事</h2>
+            <details class="acc">
+              <summary>AI 會不會算錯數學？</summary>
+              <div class="acc__body">
+                不會用「文字接龍」的方式算。所有檢定統計量、自由度、p 值都由 Code Execution
+                在沙箱裡以 scipy 實際執行算出，AI 只負責拿程式輸出去比對你的答案 ——
+                數值判定一律以程式輸出為依據。
+              </div>
+            </details>
+            <details class="acc">
+              <summary>AI 憑什麼扣我分？</summary>
+              <div class="acc__body">
+                每一個扣分都必須引用 Rubric 原文的確切片段（Citations 錨定），
+                你在批改結果裡看得到「這 1 分是依據評分標準哪一句扣的」。
+                AI 被明確禁止自行發揮另一套標準解法。
+              </div>
+            </details>
+            <details class="acc">
+              <summary>AI 沒把握（低信心）的時候怎麼辦？</summary>
+              <div class="acc__body">
+                批改結果會經第二階段「教授視角」覆核並給出信心度；低於門檻或被標記「需修正」的案件，
+                自動進入人工複核佇列，由授課教師親自裁定，不會讓沒把握的分數直接送到你手上。
+              </div>
+            </details>
+            <details class="acc">
+              <summary>我的作答會被存成什麼格式？</summary>
+              <div class="acc__body">
+                你按符號鈕輸入的數學式會轉成 LaTeX 保存 —— 一種機器可讀的標準編碼，
+                能精準還原上下標、分數與希臘字母，之後可直接餵入批改引擎，也能隨時渲染回你熟悉的符號。
+              </div>
+            </details>
+          </section>
+
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境，所有資料皆為模擬</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      // §5 符號鍵迷你 demo：點符號 → 顯示 LaTeX 原始碼
+      var latexOut = document.getElementById('symLatex');
+      var preview = document.getElementById('symPreview');
+      document.querySelectorAll('.sym-key[data-latex]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          latexOut.textContent = btn.getAttribute('data-latex');
+          latexOut.classList.remove('muted');
+          preview.classList.add('flash');
+          setTimeout(function () { preview.classList.remove('flash'); }, 250);
+        });
+      });
+
+      // 目錄 scroll-spy
+      var links = document.querySelectorAll('.toc__link');
+      var secs = Array.prototype.map.call(links, function (a) {
+        return document.getElementById(a.getAttribute('href').slice(1));
+      });
+      function spy() {
+        var idx = 0;
+        for (var i = 0; i < secs.length; i++) {
+          if (secs[i] && secs[i].getBoundingClientRect().top <= 120) idx = i;
+        }
+        links.forEach(function (a, i) { a.classList.toggle('is-active', i === idx); });
+      }
+      window.addEventListener('scroll', spy, { passive: true });
+      spy();
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

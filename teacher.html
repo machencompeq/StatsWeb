@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教師儀表板 — StatGrade AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    if (localStorage.getItem('authRole') !== 'teacher') {
+      location.replace('login.html?redirect=teacher');
+    }
+  </script>
+  <style>
+    /* 主 grid：分布圖 7fr / 佇列+SPDC 5fr */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: 24px;
+      align-items: start;
+      margin: 24px 0;
+    }
+    .dash-col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+    @media (max-width: 1024px) { .dash-grid { grid-template-columns: 1fr; } }
+
+    /* KPI 帶 */
+    .kpi-row { padding: var(--sp-4) 0; }
+    .kpi-link { font-size: 13px; }
+
+    /* 成績分布直方圖 */
+    .dist-chart { padding: var(--sp-4) var(--sp-6) var(--sp-5); }
+    .dist-chart .chart__plot { height: 220px; }
+    .dist-chart .chart__bars {
+      position: absolute;
+      left: 0; right: 0; bottom: 0; top: 26px; /* 上緣保留數值標籤空間 */
+      height: auto;
+    }
+    .dist-chart .chart__ylabel { position: absolute; top: 4px; left: var(--sp-2); }
+    .chart__bar-val {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      line-height: 1;
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    .chart-tip { display: flex; align-items: baseline; gap: 4px; }
+    .chart-tip[hidden] { display: none; }
+
+    /* 人工複核佇列 */
+    .queue__item { padding: var(--sp-4) var(--sp-6); }
+    .queue__item + .queue__item { border-top: 1px solid var(--line); }
+    .queue__top { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .queue__id { font-size: 12px; color: var(--ink-3); }
+    .queue__name { font-size: 15px; font-weight: 700; }
+    .queue__q { font-size: 13px; color: var(--ink-3); }
+    .queue__reason { font-size: 13px; color: var(--ink-2); margin: var(--sp-1) 0 var(--sp-2); }
+    .queue__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+    .queue__btns { display: flex; gap: var(--sp-2); }
+    .queue__more { padding: var(--sp-3) var(--sp-6); border-top: 1px solid var(--line); font-size: 13px; }
+
+    /* SPDC 失分熱點 */
+    .spdc-note { font-size: 12px; color: var(--ink-3); margin-top: var(--sp-3); }
+
+    /* 評分資源 */
+    .res-list { list-style: none; margin: 0; padding: 0; }
+    .res-list li {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: 9px var(--sp-6);
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .res-list li:last-child { border-bottom: none; }
+    .res-list li:hover { background: var(--surface-soft); }
+    .res-list__type {
+      flex: none;
+      width: 52px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+    }
+    .res-list a { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* 提交紀錄：篩選 tabs + 搜尋 */
+    .sub-head { flex-wrap: wrap; row-gap: var(--sp-2); }
+    .ftabs { display: flex; gap: var(--sp-1); margin-left: var(--sp-2); margin-right: auto; }
+    .ftab {
+      border: none;
+      background: none;
+      padding: 6px 10px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .ftab:hover { color: var(--ink); }
+    .ftab.is-active { color: var(--ink); font-weight: 700; border-bottom-color: var(--brand-600); }
+    .tbl-search {
+      width: 240px;
+      max-width: 100%;
+      height: var(--control-h-sm);
+      background: var(--surface);
+      border: 1px solid var(--line-strong);
+      border-radius: var(--r-md);
+      padding: 0 var(--sp-3);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .tbl-search::placeholder { color: var(--ink-3); }
+    .tbl-search:focus { border-color: var(--brand-500); box-shadow: var(--ring); outline: none; }
+    .td--time { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+    .td--student .mono { display: block; font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+    .td--score .score-bar { margin-left: var(--sp-2); }
+
+    /* 批改詳情 modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(11, 11, 11, .45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-4);
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: var(--sh-pop);
+    }
+    .modal-close {
+      position: absolute;
+      top: var(--sp-3);
+      right: var(--sp-3);
+      border: none;
+      background: none;
+      padding: var(--sp-1) var(--sp-2);
+      font-size: 16px;
+      line-height: 1;
+      color: var(--ink-3);
+      cursor: pointer;
+      border-radius: var(--r-md);
+    }
+    .modal-close:hover { color: var(--ink); background: var(--surface-soft); }
+    .m-sec + .m-sec { margin-top: var(--sp-5); padding-top: var(--sp-5); border-top: 1px solid var(--line); }
+    .m-sec__title { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--ink-3); margin-bottom: var(--sp-3); }
+    .m-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .m-meta { font-size: 13px; color: var(--ink-2); margin-top: var(--sp-2); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+    .m-student { display: flex; align-items: flex-start; gap: var(--sp-3); }
+    .m-avatar {
+      flex: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--brand-50);
+      color: var(--brand-700);
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .m-student__name { font-size: 15px; font-weight: 700; }
+    .m-score { font-family: var(--font-mono); font-size: 28px; font-weight: 700; line-height: 1.2; margin-bottom: var(--sp-3); }
+    .m-score small { font-size: 14px; font-weight: 500; color: var(--ink-3); }
+    .m-comment { font-size: 14px; color: var(--ink-2); margin: var(--sp-3) 0 0; }
+    .m-sec .callout { margin-top: var(--sp-3); }
+    .think {
+      background: var(--surface-soft);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: var(--sp-2) var(--sp-3);
+      max-height: 260px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 2;
+    }
+    .think__line { display: flex; gap: var(--sp-2); }
+    .think__tag { flex: none; min-width: 76px; font-weight: 700; color: var(--brand-600); }
+    .think__tag--code { color: var(--ok-ink); }
+    .think__tag--warn { color: var(--warn-ink); }
+    .think__tag--review { color: var(--review); }
+    .think__tag--dim { color: var(--ink-2); }
+    .think__text { color: var(--ink-2); }
+    .m-think-none { font-size: 13px; color: var(--ink-3); margin: 0; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav__shell nav__shell--wide">
+      <a class="nav__brand" href="index.html">
+        <span class="nav__mark">Σ</span>
+        <span class="nav__wordmark">StatGrade <b>AI</b></span>
+        <span class="nav__demo-chip">DEMO</span>
+      </a>
+      <nav class="nav__links" id="navLinks"></nav>
+      <div class="nav__auth" id="navAuth"></div>
+      <button class="nav__toggle" aria-label="選單" hidden>☰</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell shell--wide page">
+      <!-- 頁頭 -->
+      <div class="page-head">
+        <div>
+          <h1>教師儀表板</h1>
+          <div class="rule-double"></div>
+        </div>
+        <div class="page-head__meta">
+          <span>2026 春季 · 統計學（二）</span>
+          <button class="btn btn--secondary btn--sm" type="button" disabled title="展示環境停用">匯出 CSV</button>
+        </div>
+      </div>
+
+      <!-- (1) KPI 帶 -->
+      <section class="card card--flush" aria-label="班級關鍵指標">
+        <div class="stat-row kpi-row">
+          <div class="stat">
+            <div class="stat__label">本學期提交</div>
+            <div class="stat__value">142</div>
+            <div class="stat__meta"><span class="stat__delta-up">▲ 12</span> 較上週</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">班級平均</div>
+            <div class="stat__value">11.8 <small>/ 16</small></div>
+            <div class="stat__meta">73.8%</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">待人工複核</div>
+            <div class="stat__value">5</div>
+            <div class="stat__meta">
+              <span class="chip chip--serious"><span class="chip__dot"></span>需處理</span>
+              <a class="kpi-link" href="#queue">前往佇列 ↓</a>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">平均批改時間</div>
+            <div class="stat__value">42<small>s</small></div>
+            <div class="stat__meta">含驗算與覆核兩階段</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- (2) 主 grid -->
+      <div class="dash-grid">
+        <!-- 左：成績分布 -->
+        <section class="card card--flush" aria-label="成績分布">
+          <div class="card__head">
+            <h3 class="card__title">成績分布</h3>
+            <span class="card__action muted">n = 142</span>
+          </div>
+          <div class="chart dist-chart" id="distChart">
+            <div class="chart__plot">
+              <span class="chart__ylabel">人數</span>
+              <div class="chart__gridline" style="top: 25%;"></div>
+              <div class="chart__gridline" style="top: 50%;"></div>
+              <div class="chart__gridline" style="top: 75%;"></div>
+              <div class="chart__bars">
+                <div class="chart__bar" style="height: 5.2%;" data-range="0–4" data-count="3" tabindex="0"><span class="chart__bar-val">3</span></div>
+                <div class="chart__bar" style="height: 15.5%;" data-range="5–7" data-count="9" tabindex="0"><span class="chart__bar-val">9</span></div>
+                <div class="chart__bar" style="height: 41.4%;" data-range="8–10" data-count="24" tabindex="0"><span class="chart__bar-val">24</span></div>
+                <div class="chart__bar" style="height: 100%;" data-range="11–13" data-count="58" tabindex="0"><span class="chart__bar-val">58</span></div>
+                <div class="chart__bar" style="height: 82.8%;" data-range="14–16" data-count="48" tabindex="0"><span class="chart__bar-val">48</span></div>
+              </div>
+            </div>
+            <div class="chart__xlabels">
+              <span class="chart__xlabel">0–4</span>
+              <span class="chart__xlabel">5–7</span>
+              <span class="chart__xlabel">8–10</span>
+              <span class="chart__xlabel">11–13</span>
+              <span class="chart__xlabel">14–16</span>
+            </div>
+            <div class="chart-tip" id="chartTip" hidden>
+              <span class="chart-tip__label" id="chartTipLabel"></span>
+              <span class="chart-tip__value" id="chartTipValue"></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="dash-col">
+          <!-- 右上：人工複核佇列 -->
+          <section class="card card--flush" id="queue" aria-label="人工複核佇列">
+            <div class="card__head">
+              <h3 class="card__title">人工複核佇列</h3>
+              <span class="chip chip--serious"><span class="chip__dot"></span>5 件待處理</span>
+            </div>
+            <div>
+              <article class="queue__item">
+                <div class="queue__top">
+                  <span class="mono queue__id">sub_0140</span>
+                  <span class="queue__name">陳建宏</span>
+                  <span class="queue__q">題目二</span>
+                  <span class="chip chip--serious"><span class="chip__dot"></span>低信心 0.61</span>
+                </div>
+                <p class="queue__reason">學生使用 pooled variance，Rubric 未明確涵蓋此解法</p>
+                <div class="queue__foot">
+                  <span class="meter-group">
+                    <span class="meter meter--low"><span class="meter__fill" style="width: 61%;"></span><span class="meter__tick"></span></span>
+                    <span class="meter-value">0.61</span>
+                  </span>
+                  <span class="queue__btns">
+                    <button class="btn btn--primary btn--sm" type="button">裁定</button>
+                    <button class="btn btn--secondary btn--sm" type="button" title="改由 claude-sonnet-4-6 交叉重批：與原批改一致即自動落庫，免人工">AI 仲裁</button>
+                    <button class="btn btn--ghost btn--sm" type="button" data-view="sub_0140">查看作答</button>
+                  </span>
+                </div>
+              </article>
+              <article class="queue__item">
+                <div class="queue__top">
+                  <span class="mono queue__id">sub_0135</span>
+                  <span class="queue__name">劉承翰</span>
+                  <span class="queue__q">題目三</span>
+                  <span class="chip chip--serious"><span class="chip__dot"></span>低信心 0.58</span>
+                </div>
+                <p class="queue__reason">手寫符號辨識不確定（p̂ vs p）</p>
+                <div class="queue__foot">
+                  <span class="meter-group">
+                    <span class="meter meter--low"><span class="meter__fill" style="width: 58%;"></span><span class="meter__tick"></span></span>
+                    <span class="meter-value">0.58</span>
+                  </span>
+                  <span class="queue__btns">
+                    <button class="btn btn--primary btn--sm" type="button">裁定</button>
+                    <button class="btn btn--secondary btn--sm" type="button" title="改由 claude-sonnet-4-6 交叉重批：與原批改一致即自動落庫，免人工">AI 仲裁</button>
+                    <button class="btn btn--ghost btn--sm" type="button" data-view="sub_0135">查看作答</button>
+                  </span>
+                </div>
+              </article>
+              <article class="queue__item">
+                <div class="queue__top">
+                  <span class="mono queue__id">sub_0129</span>
+                  <span class="queue__name">蔡欣怡</span>
+                  <span class="queue__q">題目一</span>
+                  <span class="chip chip--serious"><span class="chip__dot"></span>低信心 0.72</span>
+                </div>
+                <p class="queue__reason">結論方向與計算矛盾，疑似筆誤</p>
+                <div class="queue__foot">
+                  <span class="meter-group">
+                    <span class="meter meter--low"><span class="meter__fill" style="width: 72%;"></span><span class="meter__tick"></span></span>
+                    <span class="meter-value">0.72</span>
+                  </span>
+                  <span class="queue__btns">
+                    <button class="btn btn--primary btn--sm" type="button">裁定</button>
+                    <button class="btn btn--secondary btn--sm" type="button" title="改由 claude-sonnet-4-6 交叉重批：與原批改一致即自動落庫，免人工">AI 仲裁</button>
+                    <button class="btn btn--ghost btn--sm" type="button" data-view="sub_0129">查看作答</button>
+                  </span>
+                </div>
+              </article>
+            </div>
+            <div class="queue__more"><a href="#queue">查看全部 5 件 →</a></div>
+          </section>
+
+          <!-- 右下：SPDC 失分熱點 -->
+          <section class="card" aria-label="SPDC 失分熱點">
+            <div class="card__head">
+              <h3 class="card__title">SPDC 失分熱點</h3>
+              <span class="card__action muted">維度平均 · 滿分 4</span>
+            </div>
+            <div class="hbar">
+              <span class="hbar__label">State</span>
+              <span class="hbar__track"><span class="hbar__fill" style="width: 90%;"></span></span>
+              <span class="hbar__value">3.6</span>
+            </div>
+            <div class="hbar">
+              <span class="hbar__label">Plan</span>
+              <span class="hbar__track"><span class="hbar__fill" style="width: 72.5%;"></span></span>
+              <span class="hbar__value">2.9</span>
+            </div>
+            <div class="hbar">
+              <span class="hbar__label">Do</span>
+              <span class="hbar__track"><span class="hbar__fill" style="width: 85%;"></span></span>
+              <span class="hbar__value">3.4</span>
+            </div>
+            <div class="hbar">
+              <span class="hbar__label">Conclude</span>
+              <span class="hbar__track"><span class="hbar__fill" style="width: 67.5%;"></span></span>
+              <span class="hbar__value">2.7</span>
+            </div>
+            <p class="spdc-note">Plan 與 Conclude 為全班共同弱點：條件檢查與脈絡化結論</p>
+          </section>
+
+          <!-- 右下：評分資源（真實管線檔案） -->
+          <section class="card card--flush" aria-label="評分資源">
+            <div class="card__head">
+              <h3 class="card__title">評分資源</h3>
+              <span class="chip chip--info"><span class="chip__dot"></span>真實管線檔案</span>
+            </div>
+            <ul class="res-list">
+              <li><span class="res-list__type">題目</span><a class="mono" href="question/National%20Central%20University%202_Q.docx" target="_blank" rel="noopener">National Central University 2_Q.docx ↗</a></li>
+              <li><span class="res-list__type">Rubric</span><a class="mono" href="rubic/1142%20Final%20Exam_Chi_square_Test_for_Independence_Prompt.docx" target="_blank" rel="noopener">Chi_square_Test_for_Independence.docx ↗</a></li>
+              <li><span class="res-list__type">Prompt</span><a class="mono" href="teacher_prompt/National%20Central%20University%202.txt" target="_blank" rel="noopener">teacher_prompt · NCU 2.txt ↗</a></li>
+              <li><span class="res-list__type">解答</span><a class="mono" href="ans/National%20Central%20University%202_A.docx" target="_blank" rel="noopener">National Central University 2_A.docx ↗</a></li>
+              <li><span class="res-list__type">手寫稿</span><a class="mono" href="student_hand_write/陳苡瑄手寫.jpeg" target="_blank" rel="noopener">陳苡瑄手寫.jpeg（sub_0118）↗</a></li>
+              <li><span class="res-list__type">OCR</span><a class="mono" href="ocr_output/113408515_NCUFN_陳苡瑄_National%20Central%20University%202_第1次.html" target="_blank" rel="noopener">113408515 · OCR 輸出 ↗</a></li>
+              <li><span class="res-list__type">報告</span><a class="mono" href="evaluate_output/113408515_陳苡瑄_National%20Central%20University%202_第1次.html" target="_blank" rel="noopener">113408515 · 綜合回饋報告 ↗</a></li>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+      <!-- (3) 提交紀錄 -->
+      <section class="card card--flush" aria-label="提交紀錄">
+        <div class="card__head sub-head">
+          <h3 class="card__title">提交紀錄</h3>
+          <div class="ftabs" role="tablist" aria-label="狀態篩選">
+            <button class="ftab is-active" type="button" data-filter="all">全部</button>
+            <button class="ftab" type="button" data-filter="ok">已批改</button>
+            <button class="ftab" type="button" data-filter="review">待複核</button>
+            <button class="ftab" type="button" data-filter="progress">批改中</button>
+          </div>
+          <input class="tbl-search" id="tblSearch" type="search" placeholder="搜尋學號或姓名…" aria-label="搜尋學號或姓名">
+        </div>
+        <div class="table-scroll">
+          <table class="table" id="subTable">
+            <thead>
+              <tr>
+                <th>提交 ID</th>
+                <th>學生</th>
+                <th>題目</th>
+                <th class="th--num">分數</th>
+                <th class="th--num">信心度</th>
+                <th>狀態</th>
+                <th>時間</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="tblEmpty" hidden>
+                <td colspan="8"><div class="empty">找不到符合條件的提交紀錄，請調整篩選或搜尋關鍵字。</div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 批改詳情 modal -->
+  <div class="modal-overlay" id="detailModal" hidden>
+    <div class="card modal-card" role="dialog" aria-modal="true" aria-label="批改詳情">
+      <button class="modal-close" id="modalClose" type="button" aria-label="關閉">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="shell">
+      <span>StatGrade AI · 前端展示環境，所有資料皆為模擬</span>
+      <span class="mono">v0.1</span>
+    </div>
+  </footer>
+
+  <script src="assets/js/db.js"></script>
+  <script>
+    (function () {
+      /* ── 成績分布 tooltip ── */
+      var chart = document.getElementById('distChart');
+      var tip = document.getElementById('chartTip');
+      var tipLabel = document.getElementById('chartTipLabel');
+      var tipValue = document.getElementById('chartTipValue');
+
+      function showTip(bar) {
+        tipLabel.textContent = bar.getAttribute('data-range') + ' 分 ·';
+        tipValue.textContent = bar.getAttribute('data-count') + ' 人';
+        tip.hidden = false;
+        var cb = chart.getBoundingClientRect();
+        var bb = bar.getBoundingClientRect();
+        var left = bb.left - cb.left + bb.width / 2 - tip.offsetWidth / 2;
+        left = Math.max(4, Math.min(left, cb.width - tip.offsetWidth - 4));
+        var top = bb.top - cb.top - tip.offsetHeight - 8;
+        tip.style.left = left + 'px';
+        tip.style.top = Math.max(0, top) + 'px';
+      }
+      function hideTip() { tip.hidden = true; }
+
+      Array.prototype.forEach.call(chart.querySelectorAll('.chart__bar'), function (bar) {
+        bar.addEventListener('mouseenter', function () { showTip(bar); });
+        bar.addEventListener('mouseleave', hideTip);
+        bar.addEventListener('focus', function () { showTip(bar); });
+        bar.addEventListener('blur', hideTip);
+      });
+
+      /* ── 共用工具 ── */
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+        });
+      }
+      var STATUS = {
+        graded:  { filter: 'ok',       chip: 'chip--ok',      label: '已批改' },
+        review:  { filter: 'review',   chip: 'chip--serious', label: '待複核' },
+        grading: { filter: 'progress', chip: 'chip--warn',    label: '批改中' }
+      };
+      function statusChip(status) {
+        var st = STATUS[status] || STATUS.grading;
+        return '<span class="chip ' + st.chip + '"><span class="chip__dot"></span>' + st.label + '</span>';
+      }
+
+      /* ── 提交紀錄：動態渲染（SGDB） ── */
+      var tbody = document.querySelector('#subTable tbody');
+      var emptyRow = document.getElementById('tblEmpty');
+      var rows = [];
+
+      function rowHtml(r) {
+        var st = STATUS[r.status] || STATUS.grading;
+        var scoreCell;
+        if (typeof r.score === 'number') {
+          var pct = Math.round(r.score / r.max * 10000) / 100;
+          scoreCell = '<td class="td--num td--score">' + r.score + ' / ' + r.max +
+            ' <span class="score-bar"><span class="score-bar__fill" style="width: ' + pct + '%;"></span></span></td>';
+        } else {
+          scoreCell = '<td class="td--num">—</td>';
+        }
+        var confCell = '<td class="td--num mono">' +
+          (typeof r.conf === 'number' ? r.conf.toFixed(2) : '—') + '</td>';
+        return '<tr data-status="' + st.filter + '" data-search="' +
+          esc((r.sid + ' ' + r.student).toLowerCase()) + '">' +
+          '<td class="td--id">' + esc(r.id) + '</td>' +
+          '<td class="td--student">' + esc(r.student) + '<span class="mono">' + esc(r.sid) + '</span></td>' +
+          '<td>' + esc(r.q) + '</td>' +
+          scoreCell + confCell +
+          '<td>' + statusChip(r.status) + '</td>' +
+          '<td class="td--time">' + esc(r.time) + '</td>' +
+          '<td><button class="btn btn--ghost btn--sm" type="button" data-view="' + esc(r.id) + '">查看</button></td>' +
+          '</tr>';
+      }
+
+      function renderTable() {
+        Array.prototype.forEach.call(tbody.querySelectorAll('tr[data-status]'), function (tr) {
+          tbody.removeChild(tr);
+        });
+        var html = '';
+        SGDB.all().forEach(function (r) { html += rowHtml(r); });
+        emptyRow.insertAdjacentHTML('beforebegin', html);
+        rows = tbody.querySelectorAll('tr[data-status]');
+        applyFilter();
+      }
+
+      /* ── 狀態 tabs + 搜尋過濾 ── */
+      var activeFilter = 'all';
+      var query = '';
+      var tabs = document.querySelectorAll('.ftab');
+
+      function applyFilter() {
+        var visible = 0;
+        Array.prototype.forEach.call(rows, function (row) {
+          var okStatus = activeFilter === 'all' || row.getAttribute('data-status') === activeFilter;
+          var okSearch = !query || row.getAttribute('data-search').indexOf(query) > -1;
+          var show = okStatus && okSearch;
+          row.style.display = show ? '' : 'none';
+          if (show) visible++;
+        });
+        emptyRow.hidden = visible > 0;
+      }
+
+      Array.prototype.forEach.call(tabs, function (tab) {
+        tab.addEventListener('click', function () {
+          Array.prototype.forEach.call(tabs, function (t) { t.classList.remove('is-active'); });
+          tab.classList.add('is-active');
+          activeFilter = tab.getAttribute('data-filter');
+          applyFilter();
+        });
+      });
+
+      document.getElementById('tblSearch').addEventListener('input', function () {
+        query = this.value.trim().toLowerCase();
+        applyFilter();
+      });
+
+      renderTable();
+
+      /* ── 批改詳情 modal ── */
+      var overlay = document.getElementById('detailModal');
+      var modalBody = document.getElementById('modalBody');
+
+      function confMeter(conf) {
+        if (typeof conf !== 'number') return '<span class="mono">—</span>';
+        var low = conf < 0.85 ? ' meter--low' : '';
+        return '<span class="meter-group">' +
+          '<span class="meter' + low + '"><span class="meter__fill" style="width: ' + Math.round(conf * 100) + '%;"></span><span class="meter__tick"></span></span>' +
+          '<span class="meter-value">' + conf.toFixed(2) + '</span></span>';
+      }
+
+      function modalHtml(r) {
+        var html = '';
+
+        /* (a) 提交資訊 */
+        html += '<div class="m-sec"><div class="m-sec__title">提交資訊</div>' +
+          '<div class="m-row"><span class="mono">' + esc(r.id) + '</span>' + statusChip(r.status) +
+          '<span>' + esc(r.q) + '</span></div>' +
+          '<div class="m-meta">提交時間 <span class="mono">' + esc(r.time) + '</span></div>' +
+          '<div class="m-meta">信心度 ' + confMeter(r.conf) + '</div></div>';
+
+        /* (b) 學生資料 */
+        var stu = SGDB.student(r.sid);
+        html += '<div class="m-sec"><div class="m-sec__title">學生資料</div>';
+        if (stu) {
+          html += '<div class="m-student">' +
+            '<span class="m-avatar">' + esc(stu.name.charAt(0)) + '</span>' +
+            '<div><div class="m-row"><span class="m-student__name">' + esc(stu.name) + '</span>' +
+            '<span class="mono muted">' + esc(stu.sid) + '</span></div>' +
+            '<div class="m-meta">' + esc(stu.dept) + ' · <span class="mono">' + esc(stu.email) + '</span></div>' +
+            '<div class="m-meta">本學期提交 ' + stu.submitted + ' 份 · 平均 ' + esc(stu.avg) + ' · 最強維度 ' + esc(stu.best) + '</div>' +
+            '</div></div>';
+        } else {
+          html += '<div class="m-meta">查無學生資料（<span class="mono">' + esc(r.sid) + '</span>）</div>';
+        }
+        html += '</div>';
+
+        /* (c) 詳細批改內容 */
+        html += '<div class="m-sec"><div class="m-sec__title">詳細批改內容</div>';
+        if (r.status === 'grading') {
+          html += '<div class="empty">批改中，完成後將顯示詳細內容</div>';
+        } else {
+          html += '<div class="m-score">' + r.score + ' <small>/ ' + r.max + '</small></div>';
+          if (r.spdc) {
+            var dims = [['S', 'State'], ['P', 'Plan'], ['D', 'Do'], ['C', 'Conclude']];
+            var dimMax = Math.round((r.max || 16) / 4);   /* 16 分制每維 4 分；20 分制每維 5 分 */
+            html += '<ul class="step-check">';
+            dims.forEach(function (d) {
+              var v = r.spdc[d[0]];
+              var mark = v >= dimMax ? '<span class="step-check__mark step-check__mark--ok">✓</span>' :
+                         v >= dimMax - 1 ? '<span class="step-check__mark step-check__mark--part">△</span>' :
+                                   '<span class="step-check__mark step-check__mark--bad">✗</span>';
+              html += '<li>' + mark +
+                '<span class="step-check__name">' + d[1] + '</span>' +
+                '<span class="step-check__score">' + v + ' / ' + dimMax + '</span></li>';
+            });
+            html += '</ul>';
+          }
+          if (r.comment) html += '<p class="m-comment">' + esc(r.comment) + '</p>';
+          if (r.status === 'review') {
+            html += '<div class="callout callout--warn">待人工複核原因：' + esc(r.reason || '') + '</div>';
+          }
+        }
+        html += '</div>';
+
+        /* (d) AI 批閱思考步驟 */
+        html += '<div class="m-sec"><div class="m-sec__title">AI 批閱思考步驟</div>';
+        if (r.think && r.think.length) {
+          html += '<div class="think">';
+          r.think.forEach(function (s) {
+            var cls = s.cls ? ' think__tag--' + esc(s.cls) : '';
+            html += '<div class="think__line"><span class="think__tag' + cls + '">' + esc(s.tag) + '</span>' +
+              '<span class="think__text">' + esc(s.t) + '</span></div>';
+          });
+          html += '</div>';
+        } else {
+          html += '<p class="m-think-none">展示版僅保留最新一筆完整思考紀錄（sub_0142 或學生端新提交可見）</p>';
+        }
+        html += '</div>';
+
+        return html;
+      }
+
+      function openModal(id) {
+        var r = SGDB.get(id);
+        if (!r) return;
+        modalBody.innerHTML = modalHtml(r);
+        overlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+      }
+
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('[data-view]') : null;
+        if (btn) openModal(btn.getAttribute('data-view'));
+      });
+      document.getElementById('modalClose').addEventListener('click', closeModal);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !overlay.hidden) closeModal();
+      });
+    })();
+  </script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>
