@@ -143,7 +143,7 @@
       var role = localStorage.getItem('authRole');
       if (!role) { window.location.href = 'login.html'; return; }
 
-      /* 學生（ ）的提交數與平均分由模擬資料庫即時計算 */
+      /* 學生（陳小涵）的提交數與平均分由模擬資料庫即時計算 */
       var myRecords = [];
       try {
         myRecords = SGDB.all().filter(function (r) { return r.sid === '113408515' && r.score !== null; });
@@ -152,7 +152,7 @@
 
       var PROFILES = {
         student: {
-          name: ' ',
+          name: '陳小涵',
           initial: '陳',
           avatarClass: '',
           chipClass: 'chip--role-student',

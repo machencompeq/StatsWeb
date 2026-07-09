@@ -1,0 +1,415 @@
+<!doctype html><html><head><meta charset='utf-8'><style>
+      body{font-family:sans-serif;margin:0;padding:0;background:#f4f4f4}
+      .container{max-width:800px;margin:50px auto;background:#fff;
+                 padding:30px;box-shadow:0 0 10px rgba(0,0,0,0.1)}
+      header,footer{text-align:center;color:#555}
+      .cover{text-align:center;padding:80px 0}
+      .cover h2{font-size:2.2em;color:#4a7ebb;margin-bottom:.5em}
+      .toc{margin:30px 0}
+      .toc ol{padding-left:1.2em}
+      h2.section{border-bottom:2px solid #4a7ebb;padding-bottom:.3em;margin-top:2em}
+      @media print{.page-break{page-break-after:always}}
+      table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+        }
+        table, th, td {
+          border: 1px solid #666;
+        }
+        th {
+          background-color: #dae4f4;
+          padding: 8px;
+          text-align: center;
+        }
+        td {
+          background-color: #f2f2f2;
+          padding: 8px;
+          text-align: left;
+        }
+        .report-container {
+          background-color: #fff;
+          padding: 20px;
+        }
+        .content-box {
+          background: #f9f9f9; 
+          padding: 15px; 
+          margin: 20px 0;
+        }
+        /* 使用不同顏色左側邊框來區分區塊 */
+        .box-problem { border-left: 4px solid #e67e22; }
+        .box-student { border-left: 4px solid #4a7ebb; white-space: pre-wrap; }
+        .box-solution { border-left: 4px solid #27ae60; }
+    </style>
+
+<title>113408515 回饋報告</title></head><body>
+<div class="container">
+  <header><h1>National Central University 2 綜合回饋報告</h1></header>
+  <div class="cover"><h2>113408515_陳小涵</h2><p>2026年06月09日</p></div>
+  <div class="toc"><strong>目錄</strong><ol>
+    <li>一、完整題目 (Problem Statement)</li>
+    <li>二、學生原始作答 (Student Answer)</li>
+    <li>三、完整解答 (Model Solution)</li>
+    <li>四、English Feedback</li>
+    <li>五、Statistical Feedback</li></ol></div>
+    
+<h2 class="section">一、完整題目 (Problem Statement)</h2>
+<div class="content-box box-problem report-container">
+<p>A marketing manager wants to determine if customer segment and preferred advertising channel are related. At the 0.05 level of significance, is there evidence of a relationship? Please utilize a complete S-P-D-C framework.</p>
+</div>
+
+<h2 class="section">二、學生原始作答 (Student Answer)</h2>
+<p><strong>學生姓名：</strong>陳小涵</p>
+<p><strong>學號：</strong>113408515</p>
+<p><strong>題目：</strong>National Central University 2</p>
+<p><strong>作答次數：</strong>第1次</p>
+<div class="content-box box-student">
+State<br>We want to determine if there is a significant relationship between customer segment and preferred advertising channel at the 0.05 significance level.<br>H0 = Customer segment and preferred advertising channel are independent.<br>Ha = Customer segment and preferred advertising channel are dependent.<br>Significant level alpha = 0.05.<br>Plan<br>We use chi-square test for independence.<br>Randomness: We assume the 190 customers represent a random sample from the target population.<br>Independence: The total sample size n = 190 is likely less than 10% of all customers in the population.<br>Large counts: All expected counts must be &gt;= 5.<br>Expected count E = (row total * column total) / grand total.<br>Min expected = (80 * 90) / 190 = 37.89<br>Since 37.89 &gt;= 5, the condition is satisfied.<br>Do<br>Data Summary:<br>Observed (O):<br>Millennial/Social Media = 72<br>Millennial/Email Campaign = 38<br>Gen X/Social Media = 28<br>Gen X/Email Campaign = 52<br>Expected (E):<br>Millennial/Social Media = (110 * 100) / 190 = 57.89<br>Millennial/Email Campaign = (110 * 90) / 190 = 52.11<br>Gen X/Social Media = (80 * 100) / 190 = 42.11<br>Gen X/Email Campaign = (80 * 90) / 190 = 37.89<br>chi-square = sum((Oi - Ei)^2 / Ei)<br>= (72 - 57.89)^2 / 57.89 + (38 - 52.11)^2 / 52.11 + (28 - 42.11)^2 / 42.11 + (52 - 37.89)^2 / 37.89 = 17.24<br>df = (r - 1)(c - 1) = (2 - 1)(2 - 1) = 1<br>Critical value chi-square = 3.84146 at alpha = 0.05.<br>Conclude<br>Since the calculated test statistic chi-square = 17.24 is greater than the critical value 3.841, it falls into the rejection region. We reject H0 at alpha =0.05. There is sufficient evidence at the 0.05 level of significance to conclude that there is a significant relationship between customer segment and preferred advertising channel at alpha = 0.05.
+</div>
+
+<h2 class="section">三、完整解答 (Model Solution)</h2>
+<div class="content-box box-solution report-container">
+<ol>
+<li>State: Hypotheses and Parameters</li>
+</ol>
+<p>Goal: We want to determine if there is a significant relationship (dependence) between customer segment and advertising channel preference at the α = 0.05 significance level.</p>
+<p>Hypotheses:</p>
+<p>• H₀: Customer segment and advertising channel are independent (there is no relationship between them).</p>
+<p>• Hₐ: Customer segment and advertising channel are dependent (there is a significant relationship between them).</p>
+<p>• Significance Level: α = 0.05.</p>
+<ol>
+<li>Plan: Procedure and Conditions</li>
+</ol>
+<p>Procedure: Chi-square Test for Independence.</p>
+<p>To perform this test validly, we must verify:</p>
+<p>• Random: We assume the 190 customers represent a random sample from the target population.</p>
+<p>• Independence: The total sample size n = 190 is less than 10% of all customers.</p>
+<p>• Large Counts: All expected counts must be ≥ 5.</p>
+<p>○ Expected Count (E) = (Row Total × Column Total) / Grand Total</p>
+<p>○ Min Expected: (80 × 90) / 190 = 37.9</p>
+<p>○ Since 37.9 ≥ 5, the condition is satisfied.</p>
+<ol>
+<li>Do: Calculations</li>
+</ol>
+<p>Data Summary:</p>
+<p>• Observed (O): Millennial/Social=72, Millennial/Email=38, GenX/Social=28, GenX/Email=52.</p>
+<p>• Expected (E): Millennial/Social=57.9, Millennial/Email=52.1, GenX/Social=42.1, GenX/Email=37.9.</p>
+<p>Calculation:</p>
+<p>• Test Statistic (χ²):</p>
+<p>○ χ² = Σ (Oᵢ − Eᵢ)² / Eᵢ</p>
+<p>○ χ² = (72−57.9)²/57.9 + (38−52.1)²/52.1 + (28−42.1)²/42.1 + (52−37.9)²/37.9</p>
+<p>○ χ² = 3.432 + 3.817 + 4.723 + 5.254 = 17.226</p>
+<p>• Degrees of Freedom (df): df = (rows−1)(cols−1) = (2−1)(2−1) = 1.</p>
+<p>Two equivalent decision approaches may be used:</p>
+<p>Approach 1 — Critical Value Method:</p>
+<p>○ Critical Value: Using the Chi-square table for df = 1, α = 0.05: χ²₀.₀₅ = 3.841.</p>
+<p>○ Decision Rule: Reject H₀ if χ²_stat &gt; χ²_critical.</p>
+<p>○ Since 17.226 &gt; 3.841  →  Reject H₀.</p>
+<p>Approach 2 — P-value Method:</p>
+<p>○ P-value: For χ² = 17.226 with df = 1, the p-value ≈ 0.000033 (&lt; 0.0001).</p>
+<p>○ Decision Rule: Reject H₀ if p-value &lt; α.</p>
+<p>○ Since 0.000033 &lt; 0.05  →  Reject H₀.</p>
+<p>Both approaches lead to the same conclusion.</p>
+<ol>
+<li>Conclude: Interpretation</li>
+</ol>
+<p>May use either of the two approaches below to state decision:</p>
+<p>Approach 1 — Critical Value Method:</p>
+<p>Since χ² = 17.226 &gt; χ²_critical = 3.841, the test statistic falls in the rejection region. We Reject H₀ at α = 0.05.</p>
+<p>Approach 2 — P-value Method:</p>
+<p>Since p-value ≈ 0.000033 &lt; α = 0.05, we Reject H₀ at α = 0.05.</p>
+<p>Contextual Conclusion: There is sufficient evidence at the 0.05 level of significance to conclude that there is a significant relationship between customer segment and preferred advertising channel. The marketing manager should tailor advertising strategies differently for Millennials (who prefer social media) and Gen X customers (who prefer email campaigns).</p>
+</div>
+<div class="page-break"></div>
+
+<h2 class="section">四、English Feedback</h2>
+<body><div class="report-container"><h3>Grading Table</h3>
+<table>
+<thead>
+<tr>
+<th>Grading Dimension</th>
+<th>Score (out of 5)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Task Fulfillment &amp; Disciplinary Logical Structure</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Lexical Range &amp; Statistical Terminology</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Grammatical Accuracy &amp; Sentence Structure</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Clarity &amp; Cohesion</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td>18 / 20</td>
+</tr>
+</tbody>
+</table>
+<h3>Revised Sample</h3>
+<table>
+<thead>
+<tr>
+<th>Original Sentence</th>
+<th>Revised Sentence</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>We want to determine if there is a significant relationship between customer segment and preferred advertising channel at the 0.05 significance level.</td>
+<td>We aim to determine whether there is a significant relationship between customer segment and preferred advertising channel at the 0.05 significance level.</td>
+<td>"Aim" and "whether" give a slightly more formal and academic tone; otherwise the sentence is clear and appropriately specific.</td>
+</tr>
+<tr>
+<td>Min expected = (80 * 90) / 190 = 37.89 Since 37.89 &gt;= 5, the condition is satisfied.</td>
+<td>Min expected = (80 * 90) / 190 = 37.89. Since 37.89 &gt;= 5, the condition is satisfied.</td>
+<td>Add a full stop to separate the calculation from the explanatory clause. This improves sentence boundary clarity and readability. (Frozen math content unchanged.)</td>
+</tr>
+</tbody>
+</table>
+<h3>Overall</h3>
+<ul>
+<li><strong>Total Score:</strong> 18 / 20  </li>
+<li>
+<p><strong>Band Level:</strong> CEFR: B2</p>
+</li>
+<li>
+<p><strong>Feedback:</strong></p>
+</li>
+<li>
+<p><strong>Strengths in Academic Language</strong></p>
+<ul>
+<li>Clear organizational structure using State / Plan / Do / Conclude headings — this strongly supports disciplinary logical flow.</li>
+<li>Accurate use of statistical terminology (e.g., chi-square test for independence, expected counts, df, critical value, rejection region) in an appropriately formal register.</li>
+<li>Sentences are mostly well-formed and the technical narrative is concise and purposeful.</li>
+</ul>
+</li>
+<li>
+<p><strong>Areas to Improve (Vocabulary, Grammar, or Clarity)</strong></p>
+<ul>
+<li>Vocabulary/word choice: prefer "significance level" (noun) rather than "significant level"; use "whether" instead of "if" in formal hypothesis contexts for slightly stronger academic tone.</li>
+<li>Grammar/punctuation: watch for missing sentence boundaries (e.g., add a period after numeric calculations before starting a new clause). Also reduce repetitive phrasing in the conclusion (e.g., avoid repeating "at alpha = 0.05" multiple times).</li>
+<li>Cohesion: vary transitional phrases to avoid redundancy ("Therefore", "Thus", "Consequently", "Given that...") and make the chain of reasoning even more explicit in the Plan and Conclude sections.</li>
+<li>Sentence variety: include a few more complex sentences (subordinate clauses, passive constructions where appropriate) to demonstrate syntactic range while maintaining clarity.</li>
+</ul>
+</li>
+</ul>
+<p>Suggested micro-practices: revise conclusions for concision (one clear concluding sentence), proofread for punctuation after formulas, and replace informal connectors with more formal discourse markers where appropriate.</p></div></body>
+<div class="page-break"></div>
+
+<h2 class="section">五、Statistical Feedback</h2>
+<body><div class="report-container"><h3>State</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Score</th>
+<th>Correction and Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>State-A</td>
+<td>1</td>
+<td>Correctly stated the goal: test relationship between customer segment and advertising channel.</td>
+</tr>
+<tr>
+<td>State-B</td>
+<td>1</td>
+<td>Null hypothesis correctly stated: independence between customer segment and advertising channel.</td>
+</tr>
+<tr>
+<td>State-C</td>
+<td>1</td>
+<td>Alternative hypothesis correctly stated: dependence (there is a relationship).</td>
+</tr>
+<tr>
+<td>State-D</td>
+<td>1</td>
+<td>Significance level correctly identified as alpha = 0.05.</td>
+</tr>
+<tr>
+<td>State-E</td>
+<td>1</td>
+<td>Context provided (customer segment and advertising channel).</td>
+</tr>
+<tr>
+<td><strong>Subtotal</strong></td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Plan</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Score</th>
+<th>Correction and Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plan-A</td>
+<td>1</td>
+<td>Correct test chosen: Chi-square test for independence.</td>
+</tr>
+<tr>
+<td>Plan-B</td>
+<td>1</td>
+<td>Randomness addressed: student assumes a random sample of 190 customers.</td>
+</tr>
+<tr>
+<td>Plan-C</td>
+<td>1</td>
+<td>Independence (10% rule) noted: n = 190 is likely &lt; 10% of population.</td>
+</tr>
+<tr>
+<td>Plan-D</td>
+<td>1</td>
+<td>Minimum expected count calculated (37.89) using E = (row total * column total)/grand total.</td>
+</tr>
+<tr>
+<td>Plan-E</td>
+<td>1</td>
+<td>Large counts condition stated: min expected ≥ 5, so condition satisfied.</td>
+</tr>
+<tr>
+<td><strong>Subtotal</strong></td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Do</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Score</th>
+<th>Correction and Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Do-A</td>
+<td>1</td>
+<td>Correct application of the chi-square formula (sum of (O−E)^2/E).</td>
+</tr>
+<tr>
+<td>Do-B</td>
+<td>1</td>
+<td>Test statistic computed and reported (student's 17.24; equivalent to model value 17.226 with rounding).</td>
+</tr>
+<tr>
+<td>Do-C</td>
+<td>1</td>
+<td>Degrees of freedom correctly computed as df = 1.</td>
+</tr>
+<tr>
+<td>Do-D</td>
+<td>1</td>
+<td>Correct critical value provided (χ²_critical ≈ 3.84146).</td>
+</tr>
+<tr>
+<td>Do-E</td>
+<td>1</td>
+<td>Observed and expected counts for each cell are shown and substituted into the formula (acceptable level of intermediate work).</td>
+</tr>
+<tr>
+<td><strong>Subtotal</strong></td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Conclude</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Score</th>
+<th>Correction and Explanation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Conclude-A</td>
+<td>1</td>
+<td>Logical comparison using the critical value method was used.</td>
+</tr>
+<tr>
+<td>Conclude-B</td>
+<td>1</td>
+<td>Correct numerical comparison reported (17.24 &gt; 3.841).</td>
+</tr>
+<tr>
+<td>Conclude-C</td>
+<td>1</td>
+<td>Correct statistical decision: Reject H0.</td>
+</tr>
+<tr>
+<td>Conclude-D</td>
+<td>1</td>
+<td>Proper opening/statement about rejecting H0 and sufficiency of evidence.</td>
+</tr>
+<tr>
+<td>Conclude-E</td>
+<td>1</td>
+<td>Contextual closing included: mentions relationship between customer segment and advertising channel.</td>
+</tr>
+<tr>
+<td><strong>Subtotal</strong></td>
+<td>5</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3>Summary</h3>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Score</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>State</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Plan</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Do</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Conclude</td>
+<td>5</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td>20</td>
+</tr>
+</tbody>
+</table>
+<h3>Overall</h3>
+<ul>
+<li><strong>Feedback:</strong> Good work — the solution follows the full S-P-D-C framework, uses the correct test, verifies conditions, computes expected counts, and reaches the correct conclusion. Minor points: the student rounded the chi-square statistic to 17.24 (the model value is 17.226), which is acceptable; for completeness, showing each cell's (O−E)^2/E contribution explicitly and/or reporting the p-value would strengthen the presentation. No points were deducted because reasoning, calculations, and the conclusion are correct and clearly communicated.</li>
+<li><strong>Suggested Improved Answer:</strong> State hypotheses: H0: segment and channel independent; Ha: they are dependent; alpha = 0.05. Expected counts: Millennial/Social = 57.89, Millennial/Email = 52.11, Gen X/Social = 42.11, Gen X/Email = 37.89. Compute χ² = Σ (O−E)²/E = (72−57.89)²/57.89 + (38−52.11)²/52.11 + (28−42.11)²/42.11 + (52−37.89)²/37.89 ≈ 17.23. df = 1, χ²_critical ≈ 3.841 (or p-value ≈ 0.000033). Since 17.23 &gt; 3.841 (or p &lt; 0.05), reject H0. Conclude: There is sufficient evidence of a relationship between customer segment and preferred advertising channel.</li>
+<li><strong>Total Score:</strong> 20 / 20</li>
+</ul></div></body>
+</div></body></html>

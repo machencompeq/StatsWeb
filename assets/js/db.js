@@ -6,7 +6,7 @@
 (function () {
   var KEY = 'sgdb.v2';
 
-  /* 陳苡瑄真實案例：卡方獨立性檢定（20 分制，資料取自實際批改管線） */
+  /* 陳小涵真實案例：卡方獨立性檢定（20 分制，資料取自實際批改管線） */
   var THINK_CHI = [
     { tag: '[RAG]',      cls: '',       t: '檢索題庫 chi_002 → 命中 rubric「Chi-square Test for Independence」（20 pts，SPDC 各 5）' },
     { tag: '[RAG]',      cls: '',       t: '載入 teacher prompt 與標準解答（2×2 列聯表：72 / 38 / 28 / 52，n=190）' },
@@ -42,7 +42,7 @@
   ];
 
   var SEED = [
-    { id: 'sub_0118', student: '陳苡瑄', sid: '113408515', q: '卡方獨立性檢定', score: 20, max: 20, conf: 0.97,
+    { id: 'sub_0118', student: '陳小涵', sid: '113408515', q: '卡方獨立性檢定', score: 20, max: 20, conf: 0.97,
       status: 'graded', time: '2026-06-09 14:32:11',
       spdc: { S: 5, P: 5, D: 5, C: 5 },
       comment: 'SPDC 框架完整、檢定選擇正確、條件驗證齊全、計算與結論皆正確（χ² = 17.24 ≈ 17.226，四捨五入差異依 rubric 不扣分）。統計 20 / 20；英文學術寫作 18 / 20（CEFR B2）。',
@@ -93,7 +93,7 @@
   ];
 
   var STUDENTS = {
-    '113408515': { name: '陳苡瑄', sid: '113408515', dept: '財務金融學系（NCUFN）', email: 'student@demo.statgrade.tw',
+    '113408515': { name: '陳小涵', sid: '113408515', dept: '財務金融學系（NCUFN）', email: 'student@demo.statgrade.tw',
                    submitted: 1, avg: '20 / 20', best: 'State' },
     B11208033: { name: '王伯涵', sid: 'B11208033', dept: '統計學系', email: 'b11208033@demo.statgrade.tw',
                  submitted: 5, avg: '13.2 / 16', best: 'State' },

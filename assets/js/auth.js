@@ -5,7 +5,7 @@
   var role = localStorage.getItem('authRole');
   var user = localStorage.getItem('authUser');
   /* demo 帳號顯示名固定；已登入的舊 session 一併更新 */
-  var DEMO_NAMES = { student: '陳苡瑄', teacher: '朱珊瑩' };
+  var DEMO_NAMES = { student: '陳小涵', teacher: '朱珊瑩' };
   if (user && DEMO_NAMES[user] && localStorage.getItem('authName') !== DEMO_NAMES[user]) {
     localStorage.setItem('authName', DEMO_NAMES[user]);
   }
