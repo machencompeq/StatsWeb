@@ -413,7 +413,7 @@
 
           <!-- 非真實案例提示 -->
           <div class="callout" id="demoHint" hidden>
-            展示版以<strong>陳苡瑄同學的真實作答</strong>（National Central University 2 · 卡方獨立性檢定）
+            展示版以<strong> 同學的真實作答</strong>（National Central University 2 · 卡方獨立性檢定）
             示範完整批改流程。切回第一個題目即可體驗真實手寫掃描 → OCR → AI 批改 → 回饋報告。
           </div>
 
@@ -430,19 +430,19 @@
                 過程不需打字 —— 系統以 OCR 辨識文字與數學符號，僅在關鍵處請你確認。</p>
               <div class="upload-zone__btns">
                 <button class="btn btn--secondary btn--sm" type="button" id="btnFile">選擇檔案</button>
-                <button class="btn btn--primary btn--sm" type="button" id="btnSample">載入真實手寫作答（陳苡瑄 · 第 1 次）</button>
+                <button class="btn btn--primary btn--sm" type="button" id="btnSample">載入真實手寫作答（  · 第 1 次）</button>
               </div>
             </div>
 
             <div id="scanView" hidden>
               <div class="scan-photo" id="scanPhoto">
-                <a href="student_hand_write/陳苡瑄手寫.jpeg" target="_blank" rel="noopener" title="點擊開啟原圖">
-                  <img src="student_hand_write/陳苡瑄手寫.jpeg" alt="陳苡瑄手寫作答掃描">
+                <a href="student_hand_write/ 手寫.jpeg" target="_blank" rel="noopener" title="點擊開啟原圖">
+                  <img src="student_hand_write/ 手寫.jpeg" alt=" 手寫作答掃描">
                 </a>
                 <span class="scan-beam"></span>
               </div>
               <div class="scan-meta">
-                <span>陳苡瑄手寫.jpeg</span>
+                <span> 手寫.jpeg</span>
                 <span>4032 × 3024 · 第 1 次作答</span>
                 <button class="btn btn--ghost btn--sm" type="button" id="btnReupload">重新上傳</button>
               </div>
@@ -459,7 +459,7 @@
               系統依 OCR 辨識結果逐行重寫作答內容——<b>橘圈</b>為辨識疑問處，請於下方「僅需確認」區核取。
             </p>
             <div class="scan-paper" id="simPaper" aria-label="AI 依辨識內容重寫">
-              <div class="scan-paper__head write-line" id="simHead">113408515 · 陳苡瑄 — Sheet 3 · Chi-square Test for Independence</div>
+              <div class="scan-paper__head write-line" id="simHead">113408515 ·   — Sheet 3 · Chi-square Test for Independence</div>
             </div>
           </section>
 
@@ -487,7 +487,7 @@
                 </div>
               </details>
               <details class="acc">
-                <summary class="text-sm">檢視原始 OCR 全文輸出（113408515_NCUFN_陳苡瑄_第1次）</summary>
+                <summary class="text-sm">檢視原始 OCR 全文輸出（113408515_NCUFN_ _第1次）</summary>
                 <div class="acc__body">
                   <div class="ocr-raw" id="ocrRaw"></div>
                 </div>
@@ -779,8 +779,8 @@ critical  = 3.8415  (α = 0.05, df = 1)</div>
             </div>
 
             <div class="report-links">
-              <a class="btn btn--secondary" href="evaluate_output/113408515_陳苡瑄_National%20Central%20University%202_第1次.html" target="_blank" rel="noopener">查看完整回饋報告 ↗</a>
-              <a class="btn btn--ghost" href="student_hand_write/陳苡瑄手寫.jpeg" target="_blank" rel="noopener">查看手寫原稿 ↗</a>
+              <a class="btn btn--secondary" href="evaluate_output/113408515_ _National%20Central%20University%202_第1次.html" target="_blank" rel="noopener">查看完整回饋報告 ↗</a>
+              <a class="btn btn--ghost" href="student_hand_write/ 手寫.jpeg" target="_blank" rel="noopener">查看手寫原稿 ↗</a>
             </div>
           </div>
         </aside>
@@ -1169,7 +1169,7 @@ critical  = 3.8415  (α = 0.05, df = 1)</div>
         /* 建立本次提交紀錄（時間精確到秒），批改完成後寫入模擬資料庫 */
         var record = {
           id: SGDB.nextId(),
-          student: '陳苡瑄', sid: '113408515', q: '卡方獨立性檢定',
+          student: ' ', sid: '113408515', q: '卡方獨立性檢定',
           score: 20, max: 20, conf: 0.97,
           status: 'graded',
           time: SGDB.now(),
@@ -1227,7 +1227,7 @@ critical  = 3.8415  (α = 0.05, df = 1)</div>
         function commitToDb() {
           var box = $('dbCommit'), txt = $('dbCommitText'), chip = $('dbCommitChip');
           box.hidden = false;
-          var sql = "INSERT INTO submissions VALUES ('" + record.id + "', '陳苡瑄', 'chi_002', 20, 0.97, '" + record.time + "')";
+          var sql = "INSERT INTO submissions VALUES ('" + record.id + "', ' ', 'chi_002', 20, 0.97, '" + record.time + "')";
           var i = 0;
           function type() {
             if (i <= sql.length) {
